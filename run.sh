@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/solution/target/release/icfp "$@" || echo "run error code: $?"
+/solution/target/release/submit "$@" || echo "run error code: $?"

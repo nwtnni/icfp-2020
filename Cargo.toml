@@ -6,6 +6,36 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "aaron"
+path = "aaron/main.rs"
+
+[[bin]]
+name = "andy"
+path = "andy/main.rs"
+
+[[bin]]
+name = "attilus"
+path = "attilus/main.rs"
+
+[[bin]]
+name = "jeff"
+path = "jeff/main.rs"
+
+[[bin]]
+name = "justin"
+path = "justin/main.rs"
+
+[[bin]]
+name = "newton"
+path = "newton/main.rs"
+
+[[bin]]
+name = "submit"
+path = "submit/main.rs"
+
 [dependencies]
 anyhow = "1.0"
+env_logger = "0.7"
+log = "0.4"
 reqwest = { version = "0.10", default-features = false, features = ["blocking"] }
