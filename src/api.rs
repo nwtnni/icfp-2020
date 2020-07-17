@@ -43,13 +43,38 @@ impl Client {
             .post(&url)
             .body(key.clone())
             .send()
-            .and_then(blocking::Response::error_for_status)
-            .and_then(blocking::Response::text)
+            .and_then(Self::extract)
             .with_context(|| anyhow!("Failed to register against server"))?;
 
-        log::debug!("Registered: '{}'", response);
+        log::info!("Registered: '{}'", response);
 
         Ok(Client { inner: client, key, url })
+    }
+
+    pub fn get_alien_response(&self, id: &str) -> anyhow::Result<String> {
+        log::info!("Retrieving alien response for id '{}'", id);
+        self.inner
+            .get(&format!("{}/aliens/{}", &self.url, id))
+            .send()
+            .and_then(Self::extract)
+            .with_context(|| anyhow!("Failed to retrieve alien response for id '{}'", id))
+    }
+
+    pub fn send_alien_message(&self, message: String) -> anyhow::Result<String> {
+        log::info!("Sending alien message");
+        self.inner
+            .post(&format!("{}/aliens/send", &self.url))
+            .body(message)
+            .send()
+            .and_then(Self::extract)
+            .with_context(|| anyhow!("Failed to send alien message"))
+    }
+
+    fn extract(response: blocking::Response) -> reqwest::Result<String> {
+        log::info!("Received response: {:#?}", &response);
+        response
+            .error_for_status()
+            .and_then(blocking::Response::text)
     }
 
     fn usage() -> anyhow::Error {
