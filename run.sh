@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/solution/target/release/submit "$@" || echo "run error code: $?"
+RUST_LOG="info" /solution/target/release/submit "$@" || echo "run error code: $?"
