@@ -21,7 +21,7 @@ pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = anyhow::Result<To
                 .map(Result::Ok)
                 .unwrap(),
             | var if var.starts_with(":") => var[1..]
-                .parse::<i64>()
+                .parse::<u64>()
                 .map(Token::Var)
                 .map(Result::Ok)
                 .unwrap(),
@@ -41,7 +41,6 @@ pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = anyhow::Result<To
             | "b" => Ok(Token::B),
             | "c" => Ok(Token::C),
             | "s" => Ok(Token::S),
-            | "k" => Ok(Token::K),
             | "i" => Ok(Token::I),
             | "t" => Ok(Token::Bool(true)),
             | "f" => Ok(Token::Bool(false)),

@@ -5,7 +5,7 @@ pub enum Token {
   /// - Type: int
   /// - Parity: 0
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message8.html
-  Var(i64),
+  Var(u64),
 
   /// Literal integer.
   ///
@@ -24,31 +24,10 @@ pub enum Token {
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message11.html
   Bool(bool),
 
-  /// Integer increment.
-  ///
-  /// - Type: inc: int -> int
-  /// - Parity: 1
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message5.html
-  Inc,
-
-  /// Integer decrement.
-  ///
-  /// - Type: dec: int -> int
-  /// - Parity: 1
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message6.html
-  Dec,
-
   /// Integer negation.
   ///
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message16.html
   Neg,
-
-  /// `n`th power of 2.
-  ///
-  /// - Type: pwr2: int -> int
-  /// - Parity: 1
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message23.html
-  Pow2,
 
   /// Integer sum.
   ///
@@ -85,23 +64,8 @@ pub enum Token {
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message12.html
   Lt,
 
-  /// Modulate.
-  ///
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message13.html
-  Mod,
-
-  /// Demodulate.
-  ///
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message14.html
-  Dem,
-
   /// Variable assignment.
   Assign,
-
-  /// Send to server (?).
-  ///
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message15.html
-  Send,
 
   /// Function application.
   ///
@@ -128,13 +92,6 @@ pub enum Token {
   /// - Reference: https://en.wikipedia.org/wiki/B,_C,_K,_W_system
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message20.html
   B,
-
-  /// K combinator.
-  ///
-  /// - Parity: 2
-  /// - Reference: https://en.wikipedia.org/wiki/SKI_combinator_calculus
-  /// - Source: https://message-from-space.readthedocs.io/en/latest/message21.html
-  K,
 
   /// I combinator.
   ///
