@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Token {
   /// Arbitrary variable.
   ///
@@ -55,7 +55,7 @@ pub enum Token {
   /// - Type: sum: int -> int -> int
   /// - Parity: 2
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message7.html
-  Sum,
+  Add,
 
   /// Integer multiply.
   ///
@@ -94,6 +94,9 @@ pub enum Token {
   ///
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message14.html
   Dem,
+
+  /// Variable assignment.
+  Assign,
 
   /// Send to server (?).
   ///
@@ -157,4 +160,17 @@ pub enum Token {
   /// - Reference: https://en.wikipedia.org/wiki/CAR_and_CDR
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message27.html
   Cdr,
+
+  /// Empty list.
+  ///
+  /// - Source: https://message-from-space.readthedocs.io/en/latest/message28.html
+  Nil,
+
+  /// Check for empty list.
+  ///
+  /// - Source: https://message-from-space.readthedocs.io/en/latest/message29.html
+  IsNil,
+
+  /// - Source: https://message-from-space.readthedocs.io/en/latest/message42.html
+  Galaxy,
 }
