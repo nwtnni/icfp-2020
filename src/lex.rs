@@ -17,7 +17,7 @@ pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = Token> + 'input {
                 .parse::<i64>()
                 .map(Token::Int)
                 .unwrap(),
-            | var if var.starts_with(":") => var[1..]
+            | var if var.starts_with(":") | var.starts_with("x") => var[1..]
                 .parse::<u64>()
                 .map(Token::Var)
                 .expect("Expected variable to be valid u64"),
