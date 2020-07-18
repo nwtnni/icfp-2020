@@ -38,5 +38,5 @@ path = "submit/main.rs"
 anyhow = "1.0"
 env_logger = "0.7"
 log = "0.4"
-reqwest = { version = "0.10", default-features = false, features = ["blocking"] }
+reqwest = { version = "0.10", default-features = false, features = ["blocking", "default-tls"] }
 typed-arena = "2.0"

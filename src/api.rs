@@ -39,15 +39,6 @@ impl Client {
 
         let client = blocking::Client::new();
 
-        let response = client
-            .post(&url)
-            .body(key.clone())
-            .send()
-            .and_then(Self::extract)
-            .with_context(|| anyhow!("Failed to register against server"))?;
-
-        log::info!("Registered: '{}'", response);
-
         Ok(Client { inner: client, key, url })
     }
 
@@ -55,6 +46,7 @@ impl Client {
         log::info!("Retrieving alien response for id '{}'", id);
         self.inner
             .get(&format!("{}/aliens/{}", &self.url, id))
+            .query(&[("apiKey", &self.key)])
             .send()
             .and_then(Self::extract)
             .with_context(|| anyhow!("Failed to retrieve alien response for id '{}'", id))
@@ -64,6 +56,7 @@ impl Client {
         log::info!("Sending alien message");
         self.inner
             .post(&format!("{}/aliens/send", &self.url))
+            .query(&[("apiKey", &self.key)])
             .body(message)
             .send()
             .and_then(Self::extract)
