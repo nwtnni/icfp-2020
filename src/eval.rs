@@ -6,7 +6,7 @@ use crate::ast;
 pub enum Value {
     Int(i64),
     Bool(bool),
-    Cons(Rc<Value>, Rc<Value>),
+    Cons(Box<Value>, Box<Value>),
     Var(u64),
     Nil,
     Closure(Box<dyn Fn(&Rc<ast::Exp>) -> Value>),
@@ -19,7 +19,7 @@ impl Clone for Value {
         | Closure(_) => panic!("Cannot clone closure"),
         | Int(n) => Int(*n),
         | Bool(n) => Bool(*n),
-        | Cons(a, b) => Cons(Rc::clone(a), Rc::clone(b)),
+        | Cons(h, t) => Cons(Box::clone(h), Box::clone(t)),
         | Var(n) => Var(*n),
         | Nil => Nil,
         }
@@ -190,9 +190,9 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
                 let head = Rc::clone(head);
                 let protocol = Rc::clone(&protocol);
                 move |tail| {
-                    let head = Rc::new(eval(&head, &protocol));
-                    let tail = Rc::new(eval(tail, &protocol));
-                    Value::Cons(Rc::clone(&head), tail)
+                    let head = Box::new(eval(&head, &protocol));
+                    let tail = Box::new(eval(tail, &protocol));
+                    Value::Cons(head, tail)
                 }
             }))
         }
@@ -200,21 +200,15 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
     | Car => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |list| {
-            match eval(list, &protocol) {
-            | Value::Cons(head, _) => Rc::try_unwrap(head)
-                .expect("Could not unwrap `cons` head in `car`"),
-            | _ => panic!("Expected `cons` as argument to `car`"),
-            }
+            let (head, _) = cons(eval(list, &protocol));
+            head
         }
     })),
     | Cdr => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |list| {
-            match eval(list, &protocol) {
-            | Value::Cons(_, tail) => Rc::try_unwrap(tail)
-                .expect("Could not unwrap `cons` head in `cdr`"),
-            | _ => panic!("Expected `cons` as argument to `cdr`"),
-            }
+            let (tail, _) = cons(eval(list, &protocol));
+            tail
         }
     })),
     | S => Value::Closure(Box::new({
@@ -287,6 +281,13 @@ fn int(value: Value) -> i64 {
     match value {
     | Value::Int(int) => int,
     | _ => panic!("Expected int"),
+    }
+}
+
+fn cons(value: Value) -> (Value, Value) {
+    match value {
+    | Value::Cons(head, tail) => (*head, *tail),
+    | _ => panic!("Expected cons"),
     }
 }
 

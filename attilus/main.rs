@@ -1,5 +1,4 @@
 use icfp::Value;
-use std::rc::Rc;
 use std::vec::Vec;
 
 fn build_vec(vec: &mut Vec<(i64, i64)>, acc: Value) -> Value {
@@ -10,13 +9,13 @@ fn build_vec(vec: &mut Vec<(i64, i64)>, acc: Value) -> Value {
     build_vec(
         vec,
         Value::Cons(
-            Rc::new(
+            Box::new(
                 Value::Cons(
-                    Rc::new(Value::Int(x)),
-                    Rc::new(Value::Int(y)),
+                    Box::new(Value::Int(x)),
+                    Box::new(Value::Int(y)),
                 )
             ),
-            Rc::new(acc)
+            Box::new(acc)
         )
     )
 }
