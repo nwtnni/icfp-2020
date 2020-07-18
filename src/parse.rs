@@ -3,39 +3,86 @@ use typed_arena::Arena;
 use crate::ast;
 use crate::Token;
 
-pub fn parse<'arena, I: IntoIterator<Item = Token>>(
+pub fn interaction_protocol<'arena, I: IntoIterator<Item = Token>>(
     arena: &'arena Arena<ast::Exp<'arena>>,
     tokens: I,
-) -> ast::Program<'arena> {
+) -> ast::Protocol<'arena> {
     let mut tokens = tokens.into_iter();
-    let mut stms = Vec::new();
-    while let Some(stm) = parse_stm(arena, &mut tokens) {
-        stms.push(stm);
+    let mut assignments = Vec::new();
+    while let Some(stm) = assign(arena, &mut tokens) {
+        assignments.push(stm);
     }
-    ast::Program { stms }
+    ast::Protocol {
+        assignments,
+        galaxy: galaxy(&mut tokens),
+    }
 }
 
-fn parse_stm<'arena, I: Iterator<Item = Token>>(
+pub fn test_suite<'arena, I: IntoIterator<Item = Token>>(
+    arena: &'arena Arena<ast::Exp<'arena>>,
+    tokens: I,
+) -> ast::TestSuite<'arena> {
+    let mut tokens = tokens.into_iter();
+    let mut equals = Vec::new();
+    while let Some(equal) = equal(arena, &mut tokens) {
+        equals.push(equal);
+    }
+    ast::TestSuite {
+        equals,
+    }
+}
+
+fn assign<'arena, I: Iterator<Item = Token>>(
     arena: &'arena Arena<ast::Exp<'arena>>,
     tokens: &mut I,
-) -> Option<ast::Stm<'arena>> {
+) -> Option<ast::Assign<'arena>> {
     let var = match tokens.next() {
     | Some(Token::Var(var)) => var,
-    | _ => return None,
+    | Some(Token::Galaxy) => return None,
+    | _ => panic!("Invalid assignment: expected var or 'galaxy' token"),
     };
 
-    match tokens.next() {
+    match dbg!(tokens.next()) {
     | Some(Token::Assign) => (),
-    | _ => panic!("Invalid statement: expected '='"),
+    | _ => panic!("Invalid assignment: expected '=' token"),
     }
 
-    Some(ast::Stm {
+    Some(ast::Assign {
         var,
-        exp: parse_exp(arena, tokens),
+        exp: exp(arena, tokens),
     })
 }
 
-fn parse_exp<'arena, I: Iterator<Item = Token>>(
+fn galaxy<'arena, I: Iterator<Item = Token>>(tokens: &mut I) -> u64 {
+    match tokens.next() {
+    | Some(Token::Assign) => (),
+    | _ => panic!("Invalid galaxy: expected '=' token"),
+    }
+
+    match tokens.next() {
+    | Some(Token::Var(var)) => var,
+    | _ => panic!("Expected galaxy var token"),
+    }
+}
+
+fn equal<'arena, I: Iterator<Item = Token>>(
+    arena: &'arena Arena<ast::Exp<'arena>>,
+    tokens: &mut I,
+) -> Option<ast::Equal<'arena>> {
+    let lhs = exp(arena, tokens);
+
+    match tokens.next() {
+    | Some(Token::Assign) => (),
+    | _ => panic!("Invalid equality: expected '=' token"),
+    }
+
+    Some(ast::Equal {
+        lhs,
+        rhs: exp(arena, tokens),
+    })
+}
+
+fn exp<'arena, I: Iterator<Item = Token>>(
     arena: &'arena Arena<ast::Exp<'arena>>,
     tokens: &mut I,
 ) -> ast::Exp<'arena> {
@@ -61,8 +108,8 @@ fn parse_exp<'arena, I: Iterator<Item = Token>>(
     | Some(IsNil) => ast::Exp::IsNil,
     | Some(Galaxy) => ast::Exp::Galaxy,
     | Some(App) => ast::Exp::App(
-        arena.alloc(parse_exp(arena, tokens)),
-        arena.alloc(parse_exp(arena, tokens)),
+        arena.alloc(exp(arena, tokens)),
+        arena.alloc(exp(arena, tokens)),
     ),
     | _ => panic!("Invalid expression"),
     }

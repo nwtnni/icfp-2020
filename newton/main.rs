@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     let tokens = icfp::lex(&transmission);
 
     let arena = Arena::new();
-    let ast = icfp::parse(&arena, tokens);
+    let ast = icfp::parse::interaction_protocol(&arena, tokens);
 
     dbg!(ast);
 
