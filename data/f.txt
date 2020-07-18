@@ -1,2 +1,2 @@
 ap ap f x0 x1   =   x1
-f   =   ap s t
+ap ap f x0 x1 = ap ap ap s t x0 x1

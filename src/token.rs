@@ -43,6 +43,20 @@ pub enum Token {
   /// - Source: https://message-from-space.readthedocs.io/en/latest/message9.html
   Mul,
 
+  /// Integer increment.
+  ///
+  /// - Type: inc: int -> int
+  /// - Parity: 1
+  /// - Source: https://message-from-space.readthedocs.io/en/latest/message5.html
+  Inc,
+
+  /// Integer decrement.
+  ///
+  /// - Type: inc: int -> int
+  /// - Parity: 1
+  /// - Source: https://message-from-space.readthedocs.io/en/latest/message5.html
+  Dec,
+
   /// Integer division (round toward 0).
   ///
   /// - Type: div: int -> int -> int

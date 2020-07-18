@@ -67,41 +67,18 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
     | Int(n) => Value::Int(*n),
     | Var(v) => Value::Var(*v),
     | Bool(b) => Value::Bool(*b),
-    | App(f, v) =>
-        match eval(&f, protocol) {
-        | Value::Closure(func) => func(&v),
-        | Value::Bool(true) => {
-            Value::Closure(Box::new({
-                let protocol = Rc::clone(&protocol);
-                move |lhs| {
-                    Value::Closure(Box::new({
-                        let protocol = Rc::clone(&protocol);
-                        let lhs = Rc::clone(&lhs);
-                        move |_| {
-                            eval(&lhs, &protocol)
-                        }
-                    }))
-                }
-            }))
-        }
-        | Value::Bool(false) => {
-            Value::Closure(Box::new({
-                let protocol = Rc::clone(&protocol);
-                move |_| {
-                    Value::Closure(Box::new({
-                        let protocol = Rc::clone(&protocol);
-                        move |rhs| {
-                            eval(&rhs, &protocol)
-                        }
-                    }))
-                }
-            }))
-        }
-        | _ => panic!("Can't apply values that are not closures or bool")
-        },
+    | App(f, v) => closure(eval(&f, protocol), protocol)(&v),
     | Neg => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| Value::Int(-int(eval(e, &protocol)))
+    })),
+    | Inc => Value::Closure(Box::new({
+        let protocol = Rc::clone(&protocol);
+        move |e| Value::Int(int(eval(e, &protocol)) + 1)
+    })),
+    | Dec => Value::Closure(Box::new({
+        let protocol = Rc::clone(&protocol);
+        move |e| Value::Int(int(eval(e, &protocol)) - 1)
     })),
     | IsNil => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
@@ -223,8 +200,8 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
                         let x0 = Rc::clone(&x0);
                         let x1 = Rc::clone(x1);
                         move |x2| {
-                            let f = (closure(eval(&x0, &protocol)))(&x2);
-                            (closure(f))(&Rc::new(App(Rc::clone(&x1), Rc::clone(&x2))))
+                            let f = (closure(eval(&x0, &protocol), &protocol))(&x2);
+                            (closure(f, &protocol))(&Rc::new(App(Rc::clone(&x1), Rc::clone(&x2))))
                         }
                     }))
                 }
@@ -247,7 +224,7 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
                         let x0 = Rc::clone(&x0);
                         let x1 = Rc::clone(x1);
                         move |x2| {
-                            (closure(eval(&x0, &protocol)))(&Rc::new(App(Rc::clone(&x1), Rc::clone(&x2))))
+                            (closure(eval(&x0, &protocol), &protocol))(&Rc::new(App(Rc::clone(&x1), Rc::clone(&x2))))
                         }
                     }))
                 }
@@ -266,7 +243,7 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
                         let x0 = Rc::clone(&x0);
                         let x1 = Rc::clone(x1);
                         move |x2| {
-                            (closure((closure(eval(&x0, &protocol)))(&x2)))(&x1)
+                            (closure((closure(eval(&x0, &protocol), &protocol))(&x2), &protocol))(&x1)
                         }
                     }))
                 }
@@ -291,9 +268,36 @@ fn cons(value: Value) -> (Value, Value) {
     }
 }
 
-fn closure(value: Value) -> Box<dyn Fn(&Rc<ast::Exp>) -> Value> {
+fn closure(value: Value, protocol: &Rc<ast::Protocol>) -> Box<dyn Fn(&Rc<ast::Exp>) -> Value> {
     match value {
-    | Value::Closure(closure) => closure,
-    | _ => panic!("Expected closure"),
+    | Value::Closure(func) => func,
+    | Value::Bool(true) => {
+        Box::new({
+            let protocol = Rc::clone(&protocol);
+            move |lhs| {
+                Value::Closure(Box::new({
+                    let protocol = Rc::clone(&protocol);
+                    let lhs = Rc::clone(&lhs);
+                    move |_| {
+                        eval(&lhs, &protocol)
+                    }
+                }))
+            }
+        })
+    }
+    | Value::Bool(false) => {
+        Box::new({
+            let protocol = Rc::clone(&protocol);
+            move |_| {
+                Value::Closure(Box::new({
+                    let protocol = Rc::clone(&protocol);
+                    move |rhs| {
+                        eval(&rhs, &protocol)
+                    }
+                }))
+            }
+        })
+    }
+    | _ => panic!("Expected closure or bool")
     }
 }

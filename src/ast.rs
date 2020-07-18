@@ -36,6 +36,8 @@ pub enum Exp {
     Bool(bool),
 
     Neg,
+    Inc,
+    Dec,
 
     Add,
     Mul,
