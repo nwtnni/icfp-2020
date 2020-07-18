@@ -58,7 +58,8 @@ impl PartialEq for Value {
     }
 }
 
-pub fn eval(expr: &ast::Exp) -> Value {
+pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
+
     use ast::Exp::*;
     match expr {
     | Nil => Value::Nil,
@@ -66,28 +67,37 @@ pub fn eval(expr: &ast::Exp) -> Value {
     | Var(v) => Value::Var(*v),
     | Bool(b) => Value::Bool(*b),
     | App(f, v) =>
-        match eval(&f) {
+        match eval(&f, protocol) {
         | Value::Closure(func) => func(&v),
         | Value::Bool(true) => todo!("hmm"),
         | _ => panic!("Can't apply values that are not closures or bool")
         },
-    | Neg => Value::Closure(Rc::new(move |e| {
-        match eval(e) {
-        | Value::Int(n) => Value::Int(-n),
-        | _ => panic!("hmm"),
-        }
-    })),
-    | Add => Value::Closure(Rc::new(move |e| {
-        match eval(e) {
-        | Value::Int(n1) => Value::Closure(Rc::new(move |e| {
-            match eval(e) {
-            | Value::Int(n2) => Value::Int(n1 + n2),
-            | _ => panic!("temp"),
+    | Neg => Value::Closure(Rc::new({
+        let protocol = Rc::clone(&protocol);
+        move |e| {
+            match eval(e, &protocol) {
+            | Value::Int(n) => Value::Int(-n),
+            | _ => panic!("hmm"),
             }
-        })),
-        | _ => panic!("jeff says hi"),
         }
     })),
-    | _ => todo!()
+    | Add => Value::Closure(Rc::new({
+        let protocol = Rc::clone(&protocol);
+        move |e| {
+            match eval(e, &protocol) {
+            | Value::Int(n1) => Value::Closure(Rc::new({
+                let protocol = Rc::clone(&protocol);
+                move |e| {
+                    match eval(e, &protocol) {
+                    | Value::Int(n2) => Value::Int(n1 + n2),
+                    | _ => todo!(),
+                    }
+                }
+            })),
+            | _ => todo!(),
+            }
+        }
+    })),
+    | _ => todo!(),
     }
 }

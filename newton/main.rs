@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::rc::Rc;
 
 use anyhow::anyhow;
 
@@ -36,10 +37,11 @@ fn main() -> anyhow::Result<()> {
         }
         Mode::Test => {
             let test = icfp::parse::test_suite(tokens);
+            let protocol = Rc::new(icfp::ast::Protocol::default());
             dbg!(&test);
             for t in test.equals {
-                let lhs = icfp::eval(&t.lhs);
-                let rhs = icfp::eval(&t.rhs);
+                let lhs = icfp::eval(&t.lhs, &protocol);
+                let rhs = icfp::eval(&t.rhs, &protocol);
                 assert_eq!(lhs, rhs)
             }
         }
