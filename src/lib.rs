@@ -1,10 +1,12 @@
 mod api;
 pub mod ast;
+mod eval;
+mod lex;
 pub mod parse;
 mod token;
-mod lex;
 pub mod transport;
 
 pub use api::Client;
+pub use eval::eval;
 pub use lex::lex;
 pub use token::Token;
