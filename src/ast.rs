@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ops;
 
 /// Interaction protocol.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Protocol {
     pub assignments: Rc<HashMap<u64, Rc<Exp>>>,
     pub galaxy: u64,
