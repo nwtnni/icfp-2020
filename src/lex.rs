@@ -1,8 +1,6 @@
-use anyhow::anyhow;
-
 use crate::Token;
 
-pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = anyhow::Result<Token>> + 'input {
+pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = Token> + 'input {
     input
         .trim()
         .split('\n')
@@ -18,34 +16,32 @@ pub fn lex<'input>(input: &'input str) -> impl Iterator<Item = anyhow::Result<To
             | int if int.parse::<i64>().is_ok() => int
                 .parse::<i64>()
                 .map(Token::Int)
-                .map(Result::Ok)
                 .unwrap(),
             | var if var.starts_with(":") => var[1..]
                 .parse::<u64>()
                 .map(Token::Var)
-                .map(Result::Ok)
-                .unwrap(),
-            | "ap" => Ok(Token::App),
-            | "cons" => Ok(Token::Cons),
-            | "car" => Ok(Token::Car),
-            | "cdr" => Ok(Token::Cdr),
-            | "nil" => Ok(Token::Nil),
-            | "isnil" => Ok(Token::IsNil),
-            | "=" => Ok(Token::Assign),
-            | "eq" => Ok(Token::Eq),
-            | "lt" => Ok(Token::Lt),
-            | "add" => Ok(Token::Add),
-            | "mul" => Ok(Token::Mul),
-            | "div" => Ok(Token::Div),
-            | "neg" => Ok(Token::Neg),
-            | "b" => Ok(Token::B),
-            | "c" => Ok(Token::C),
-            | "s" => Ok(Token::S),
-            | "i" => Ok(Token::I),
-            | "t" => Ok(Token::Bool(true)),
-            | "f" => Ok(Token::Bool(false)),
-            | "galaxy" => Ok(Token::Galaxy),
-            | token => Err(anyhow!("Unrecognized token on line {}: {}", line, token)),
+                .expect("Expected variable to be valid u64"),
+            | "ap" => Token::App,
+            | "cons" => Token::Cons,
+            | "car" => Token::Car,
+            | "cdr" => Token::Cdr,
+            | "nil" => Token::Nil,
+            | "isnil" => Token::IsNil,
+            | "=" => Token::Assign,
+            | "eq" => Token::Eq,
+            | "lt" => Token::Lt,
+            | "add" => Token::Add,
+            | "mul" => Token::Mul,
+            | "div" => Token::Div,
+            | "neg" => Token::Neg,
+            | "b" => Token::B,
+            | "c" => Token::C,
+            | "s" => Token::S,
+            | "i" => Token::I,
+            | "t" => Token::Bool(true),
+            | "f" => Token::Bool(false),
+            | "galaxy" => Token::Galaxy,
+            | token => panic!(format!("Unrecognized token on line {}: {}", line, token)),
             }
         })
 }

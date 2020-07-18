@@ -1,13 +1,20 @@
+use std::env;
 use std::fs;
+
+use typed_arena::Arena;
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let transmission = fs::read_to_string("data/galaxy.txt")?;
+    let path = env::args().nth(1).unwrap();
+    let transmission = fs::read_to_string(&path)?;
 
-    for token in icfp::lex(&transmission) {
-        dbg!(token?);
-    }
+    let tokens = icfp::lex(&transmission);
+
+    let arena = Arena::new();
+    let ast = icfp::parse(&arena, tokens);
+
+    dbg!(ast);
 
     Ok(())
 }

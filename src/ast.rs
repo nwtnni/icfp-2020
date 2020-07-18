@@ -5,8 +5,8 @@ pub struct Program<'a> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Stm<'a> {
-    var: u64,
-    exp: Exp<'a>,
+    pub var: u64,
+    pub exp: Exp<'a>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
