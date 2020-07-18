@@ -49,7 +49,7 @@ fn assign<'arena, I: Iterator<Item = Token>>(
 
     Some(ast::Assign {
         var,
-        exp: exp(arena, tokens),
+        exp: exp(arena, tokens)?,
     })
 }
 
@@ -69,7 +69,7 @@ fn equal<'arena, I: Iterator<Item = Token>>(
     arena: &'arena Arena<ast::Exp<'arena>>,
     tokens: &mut I,
 ) -> Option<ast::Equal<'arena>> {
-    let lhs = exp(arena, tokens);
+    let lhs = exp(arena, tokens)?;
 
     match tokens.next() {
     | Some(Token::Assign) => (),
@@ -78,39 +78,40 @@ fn equal<'arena, I: Iterator<Item = Token>>(
 
     Some(ast::Equal {
         lhs,
-        rhs: exp(arena, tokens),
+        rhs: exp(arena, tokens)?,
     })
 }
 
 fn exp<'arena, I: Iterator<Item = Token>>(
     arena: &'arena Arena<ast::Exp<'arena>>,
     tokens: &mut I,
-) -> ast::Exp<'arena> {
+) -> Option<ast::Exp<'arena>> {
     use Token::*;
-    match tokens.next() {
-    | Some(Var(var)) => ast::Exp::Var(var),
-    | Some(Int(int)) => ast::Exp::Int(int),
-    | Some(Bool(bool)) => ast::Exp::Bool(bool),
-    | Some(Neg) => ast::Exp::Neg,
-    | Some(Add) => ast::Exp::Add,
-    | Some(Mul) => ast::Exp::Mul,
-    | Some(Div) => ast::Exp::Div,
-    | Some(Eq) => ast::Exp::Eq,
-    | Some(Lt) => ast::Exp::Lt,
-    | Some(S) => ast::Exp::S,
-    | Some(C) => ast::Exp::C,
-    | Some(B) => ast::Exp::B,
-    | Some(I) => ast::Exp::I,
-    | Some(Cons) => ast::Exp::Cons,
-    | Some(Car) => ast::Exp::Car,
-    | Some(Cdr) => ast::Exp::Cdr,
-    | Some(Nil) => ast::Exp::Nil,
-    | Some(IsNil) => ast::Exp::IsNil,
-    | Some(Galaxy) => ast::Exp::Galaxy,
-    | Some(App) => ast::Exp::App(
-        arena.alloc(exp(arena, tokens)),
-        arena.alloc(exp(arena, tokens)),
+    let exp = match tokens.next()? {
+    | Var(var) => ast::Exp::Var(var),
+    | Int(int) => ast::Exp::Int(int),
+    | Bool(bool) => ast::Exp::Bool(bool),
+    | Neg => ast::Exp::Neg,
+    | Add => ast::Exp::Add,
+    | Mul => ast::Exp::Mul,
+    | Div => ast::Exp::Div,
+    | Eq => ast::Exp::Eq,
+    | Lt => ast::Exp::Lt,
+    | S => ast::Exp::S,
+    | C => ast::Exp::C,
+    | B => ast::Exp::B,
+    | I => ast::Exp::I,
+    | Cons => ast::Exp::Cons,
+    | Car => ast::Exp::Car,
+    | Cdr => ast::Exp::Cdr,
+    | Nil => ast::Exp::Nil,
+    | IsNil => ast::Exp::IsNil,
+    | Galaxy => ast::Exp::Galaxy,
+    | App => ast::Exp::App(
+        arena.alloc(exp(arena, tokens)?),
+        arena.alloc(exp(arena, tokens)?),
     ),
     | _ => panic!("Invalid expression"),
-    }
+    };
+    Some(exp)
 }
