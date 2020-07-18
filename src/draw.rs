@@ -1,5 +1,4 @@
 use crate::eval::Value;
-use std::rc::Rc;
 use std::io::{self, Write};
 
 const CSI: &str = "\x1b[";

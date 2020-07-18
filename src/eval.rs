@@ -101,12 +101,7 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
         },
     | Neg => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n) => Value::Int(-n),
-            | _ => panic!("Expected int as argument for Neg"),
-            }
-        }
+        move |e| Value::Int(-int(eval(e, &protocol)))
     })),
     | IsNil => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
@@ -120,96 +115,82 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
     })),
     | Add => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Box::new({
+        move |e1| {
+            Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
-                move |e| {
-                    match eval(e, &protocol) {
-                    | Value::Int(n2) => Value::Int(n1 + n2),
-                    | _ => panic!("Expected int as arg1 for Add"),
-                    }
+                let e1 = Rc::clone(&e1);
+                move |e2| {
+                    let n1 = int(eval(&e1, &protocol));
+                    let n2 = int(eval(e2, &protocol));
+                    Value::Int(n1 + n2)
                 }
-            })),
-            | _ => panic!("Expected int as arg2 for Add"),
-            }
+            }))
         }
     })),
     | Mul => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Box::new({
+        move |e1| {
+            Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
-                move |e| {
-                    match eval(e, &protocol) {
-                    | Value::Int(n2) => Value::Int(n1 * n2),
-                    | _ => panic!("Expected int as arg1 for Mul"),
-                    }
+                let e1 = Rc::clone(&e1);
+                move |e2| {
+                    let n1 = int(eval(&e1, &protocol));
+                    let n2 = int(eval(e2, &protocol));
+                    Value::Int(n1 * n2)
                 }
-            })),
-            | _ => panic!("Expected int as arg2 for Mul"),
-            }
+            }))
         }
     })),
     | Div => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Box::new({
+        move |e1| {
+            Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
-                move |e| {
-                    match eval(e, &protocol) {
-                    | Value::Int(n2) => Value::Int(n1 / n2),
-                    | _ => panic!("Expected int as arg1 for Div"),
-                    }
+                let e1 = Rc::clone(&e1);
+                move |e2| {
+                    let n1 = int(eval(&e1, &protocol));
+                    let n2 = int(eval(e2, &protocol));
+                    Value::Int(n1 / n2)
                 }
-            })),
-            | _ => panic!("Expected int as arg2 for Div"),
-            }
+            }))
         }
     })),
     | Eq => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Box::new({
+        move |e1| {
+            Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
-                move |e| {
-                    match eval(e, &protocol) {
-                    | Value::Int(n2) => Value::Bool(n1 == n2),
-                    | _ => panic!("Expected int as arg1 for Eq"),
-                    }
+                let e1 = Rc::clone(&e1);
+                move |e2| {
+                    let n1 = int(eval(&e1, &protocol));
+                    let n2 = int(eval(e2, &protocol));
+                    Value::Bool(n1 == n2)
                 }
-            })),
-            | _ => panic!("Expected int as arg2 for Eq"),
-            }
+            }))
         }
     })),
     | Lt => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
-        move |e| {
-            match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Box::new({
+        move |e1| {
+            Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
-                move |e| {
-                    match eval(e, &protocol) {
-                    | Value::Int(n2) => Value::Bool(n1 < n2),
-                    | _ => panic!("Expected int as arg1 for Lt"),
-                    }
+                let e1 = Rc::clone(&e1);
+                move |e2| {
+                    let n1 = int(eval(&e1, &protocol));
+                    let n2 = int(eval(e2, &protocol));
+                    Value::Bool(n1 < n2)
                 }
-            })),
-            | _ => panic!("Expected int as arg2 for Lt"),
-            }
+            }))
         }
     })),
     | Cons => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |head| {
             Value::Closure(Box::new({
-                let head = Rc::new(eval(head, &protocol));
+                let head = Rc::clone(head);
                 let protocol = Rc::clone(&protocol);
                 move |tail| {
+                    let head = Rc::new(eval(&head, &protocol));
                     let tail = Rc::new(eval(tail, &protocol));
                     Value::Cons(Rc::clone(&head), tail)
                 }
@@ -299,6 +280,13 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
         }
     })),
     | _ => todo!(),
+    }
+}
+
+fn int(value: Value) -> i64 {
+    match value {
+    | Value::Int(int) => int,
+    | _ => panic!("Expected int"),
     }
 }
 
