@@ -1,9 +1,10 @@
 use std::rc::Rc;
+use std::collections::HashMap;
 
 /// Interaction protocol.
 #[derive(Clone, Debug)]
 pub struct Protocol {
-    pub assignments: Vec<Assign>,
+    pub assignments: Rc<HashMap<u64, Rc<Exp>>>,
     pub galaxy: u64,
 }
 
@@ -11,12 +12,6 @@ pub struct Protocol {
 #[derive(Clone, Debug)]
 pub struct TestSuite {
     pub equals: Vec<Equal>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Assign {
-    pub var: u64,
-    pub exp: Exp,
 }
 
 #[derive(Clone, Debug)]

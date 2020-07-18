@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::ast;
@@ -7,12 +8,12 @@ pub fn interaction_protocol<I: IntoIterator<Item = Token>>(
     tokens: I,
 ) -> ast::Protocol {
     let mut tokens = tokens.into_iter();
-    let mut assignments = Vec::new();
-    while let Some(stm) = assign(&mut tokens) {
-        assignments.push(stm);
+    let mut assignments = HashMap::new();
+    while let Some((var, exp)) = assign(&mut tokens) {
+        assignments.insert(var, Rc::new(exp));
     }
     ast::Protocol {
-        assignments,
+        assignments: Rc::new(assignments),
         galaxy: galaxy(&mut tokens),
     }
 }
@@ -32,7 +33,7 @@ pub fn test_suite<I: IntoIterator<Item = Token>>(
 
 fn assign<I: Iterator<Item = Token>>(
     tokens: &mut I,
-) -> Option<ast::Assign> {
+) -> Option<(u64, ast::Exp)> {
     let var = match tokens.next() {
     | Some(Token::Var(var)) => var,
     | Some(Token::Galaxy) => return None,
@@ -44,10 +45,7 @@ fn assign<I: Iterator<Item = Token>>(
     | _ => panic!("Invalid assignment: expected '=' token"),
     }
 
-    Some(ast::Assign {
-        var,
-        exp: exp(tokens)?,
-    })
+    Some((var, exp(tokens)?))
 }
 
 fn galaxy<'arena, I: Iterator<Item = Token>>(tokens: &mut I) -> u64 {
