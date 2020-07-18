@@ -1,15 +1,14 @@
-use typed_arena::Arena;
+use std::rc::Rc;
 
 use crate::ast;
 use crate::Token;
 
-pub fn interaction_protocol<'arena, I: IntoIterator<Item = Token>>(
-    arena: &'arena Arena<ast::Exp<'arena>>,
+pub fn interaction_protocol<I: IntoIterator<Item = Token>>(
     tokens: I,
-) -> ast::Protocol<'arena> {
+) -> ast::Protocol {
     let mut tokens = tokens.into_iter();
     let mut assignments = Vec::new();
-    while let Some(stm) = assign(arena, &mut tokens) {
+    while let Some(stm) = assign(&mut tokens) {
         assignments.push(stm);
     }
     ast::Protocol {
@@ -18,13 +17,12 @@ pub fn interaction_protocol<'arena, I: IntoIterator<Item = Token>>(
     }
 }
 
-pub fn test_suite<'arena, I: IntoIterator<Item = Token>>(
-    arena: &'arena Arena<ast::Exp<'arena>>,
+pub fn test_suite<I: IntoIterator<Item = Token>>(
     tokens: I,
-) -> ast::TestSuite<'arena> {
+) -> ast::TestSuite {
     let mut tokens = tokens.into_iter();
     let mut equals = Vec::new();
-    while let Some(equal) = equal(arena, &mut tokens) {
+    while let Some(equal) = equal(&mut tokens) {
         equals.push(equal);
     }
     ast::TestSuite {
@@ -32,10 +30,9 @@ pub fn test_suite<'arena, I: IntoIterator<Item = Token>>(
     }
 }
 
-fn assign<'arena, I: Iterator<Item = Token>>(
-    arena: &'arena Arena<ast::Exp<'arena>>,
+fn assign<I: Iterator<Item = Token>>(
     tokens: &mut I,
-) -> Option<ast::Assign<'arena>> {
+) -> Option<ast::Assign> {
     let var = match tokens.next() {
     | Some(Token::Var(var)) => var,
     | Some(Token::Galaxy) => return None,
@@ -49,7 +46,7 @@ fn assign<'arena, I: Iterator<Item = Token>>(
 
     Some(ast::Assign {
         var,
-        exp: exp(arena, tokens)?,
+        exp: exp(tokens)?,
     })
 }
 
@@ -65,11 +62,10 @@ fn galaxy<'arena, I: Iterator<Item = Token>>(tokens: &mut I) -> u64 {
     }
 }
 
-fn equal<'arena, I: Iterator<Item = Token>>(
-    arena: &'arena Arena<ast::Exp<'arena>>,
+fn equal<I: Iterator<Item = Token>>(
     tokens: &mut I,
-) -> Option<ast::Equal<'arena>> {
-    let lhs = exp(arena, tokens)?;
+) -> Option<ast::Equal> {
+    let lhs = exp(tokens)?;
 
     match tokens.next() {
     | Some(Token::Assign) => (),
@@ -78,14 +74,13 @@ fn equal<'arena, I: Iterator<Item = Token>>(
 
     Some(ast::Equal {
         lhs,
-        rhs: exp(arena, tokens)?,
+        rhs: exp(tokens)?,
     })
 }
 
-fn exp<'arena, I: Iterator<Item = Token>>(
-    arena: &'arena Arena<ast::Exp<'arena>>,
+fn exp<I: Iterator<Item = Token>>(
     tokens: &mut I,
-) -> Option<ast::Exp<'arena>> {
+) -> Option<ast::Exp> {
     use Token::*;
     let exp = match tokens.next()? {
     | Var(var) => ast::Exp::Var(var),
@@ -107,10 +102,7 @@ fn exp<'arena, I: Iterator<Item = Token>>(
     | Nil => ast::Exp::Nil,
     | IsNil => ast::Exp::IsNil,
     | Galaxy => ast::Exp::Galaxy,
-    | App => ast::Exp::App(
-        arena.alloc(exp(arena, tokens)?),
-        arena.alloc(exp(arena, tokens)?),
-    ),
+    | App => ast::Exp::App(exp(tokens).map(Rc::new)?, exp(tokens).map(Rc::new)?),
     | _ => panic!("Invalid expression"),
     };
     Some(exp)

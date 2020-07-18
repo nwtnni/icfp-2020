@@ -1,30 +1,32 @@
+use std::rc::Rc;
+
 /// Interaction protocol.
 #[derive(Clone, Debug)]
-pub struct Protocol<'a> {
-    pub assignments: Vec<Assign<'a>>,
+pub struct Protocol {
+    pub assignments: Vec<Assign>,
     pub galaxy: u64,
 }
 
 /// Test suite.
 #[derive(Clone, Debug)]
-pub struct TestSuite<'a> {
-    pub equals: Vec<Equal<'a>>,
+pub struct TestSuite {
+    pub equals: Vec<Equal>,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Assign<'a> {
+#[derive(Clone, Debug)]
+pub struct Assign {
     pub var: u64,
-    pub exp: Exp<'a>,
+    pub exp: Exp,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Equal<'a> {
-    pub lhs: Exp<'a>,
-    pub rhs: Exp<'a>,
+#[derive(Clone, Debug)]
+pub struct Equal {
+    pub lhs: Exp,
+    pub rhs: Exp,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Exp<'a> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Exp {
     Nil,
     Int(i64),
     Var(u64),
@@ -39,7 +41,7 @@ pub enum Exp<'a> {
     Eq,
     Lt,
 
-    App(&'a Exp<'a>, &'a Exp<'a>),
+    App(Rc<Exp>, Rc<Exp>),
 
     S,
     I,

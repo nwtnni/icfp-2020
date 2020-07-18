@@ -2,7 +2,6 @@ use std::env;
 use std::fs;
 
 use anyhow::anyhow;
-use typed_arena::Arena;
 
 #[derive(Copy, Clone, Debug)]
 enum Mode {
@@ -29,19 +28,18 @@ fn main() -> anyhow::Result<()> {
     let path = args.next().unwrap();
     let transmission = fs::read_to_string(&path)?;
     let tokens = icfp::lex(&transmission);
-    let arena = Arena::new();
 
     match mode {
         Mode::Protocol => {
-            let protocol = icfp::parse::interaction_protocol(&arena, tokens);
+            let protocol = icfp::parse::interaction_protocol(tokens);
             dbg!(protocol);
         }
         Mode::Test => {
-            let test = icfp::parse::test_suite(&arena, tokens);
+            let test = icfp::parse::test_suite(tokens);
             dbg!(&test);
             for t in test.equals {
-                let lhs = icfp::eval(&arena, &t.lhs);
-                let rhs = icfp::eval(&arena, &t.rhs);
+                let lhs = icfp::eval(&t.lhs);
+                let rhs = icfp::eval(&t.rhs);
                 assert_eq!(lhs, rhs)
             }
         }
