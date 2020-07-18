@@ -32,8 +32,9 @@ fn main() -> anyhow::Result<()> {
 
     match mode {
         Mode::Protocol => {
-            let protocol = icfp::parse::interaction_protocol(tokens);
-            dbg!(protocol);
+            let protocol = Rc::new(icfp::parse::interaction_protocol(tokens));
+            let temp = &protocol[1043];
+            dbg!(icfp::eval(temp, &protocol));
         }
         Mode::Test => {
             let test = icfp::parse::test_suite(tokens);

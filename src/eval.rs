@@ -9,7 +9,7 @@ pub enum Value {
     Cons(Rc<Value>, Rc<Value>),
     Var(u64),
     Nil,
-    Closure(Rc<dyn Fn(&ast::Exp) -> Value>),
+    Closure(Box<dyn Fn(&ast::Exp) -> Value>),
 }
 
 impl Clone for Value {
@@ -72,7 +72,7 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
         | Value::Bool(true) => todo!("hmm"),
         | _ => panic!("Can't apply values that are not closures or bool")
         },
-    | Neg => Value::Closure(Rc::new({
+    | Neg => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
@@ -81,7 +81,7 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | IsNil => Value::Closure(Rc::new({
+    | IsNil => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
@@ -91,11 +91,11 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | Add => Value::Closure(Rc::new({
+    | Add => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Rc::new({
+            | Value::Int(n1) => Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
                 move |e| {
                     match eval(e, &protocol) {
@@ -108,11 +108,11 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | Mul => Value::Closure(Rc::new({
+    | Mul => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Rc::new({
+            | Value::Int(n1) => Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
                 move |e| {
                     match eval(e, &protocol) {
@@ -125,11 +125,11 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | Div => Value::Closure(Rc::new({
+    | Div => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Rc::new({
+            | Value::Int(n1) => Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
                 move |e| {
                     match eval(e, &protocol) {
@@ -142,11 +142,11 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | Eq => Value::Closure(Rc::new({
+    | Eq => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Rc::new({
+            | Value::Int(n1) => Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
                 move |e| {
                     match eval(e, &protocol) {
@@ -159,11 +159,11 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
             }
         }
     })),
-    | Lt => Value::Closure(Rc::new({
+    | Lt => Value::Closure(Box::new({
         let protocol = Rc::clone(&protocol);
         move |e| {
             match eval(e, &protocol) {
-            | Value::Int(n1) => Value::Closure(Rc::new({
+            | Value::Int(n1) => Value::Closure(Box::new({
                 let protocol = Rc::clone(&protocol);
                 move |e| {
                     match eval(e, &protocol) {
@@ -173,6 +173,39 @@ pub fn eval(expr: &ast::Exp, protocol: &Rc<ast::Protocol>) -> Value {
                 }
             })),
             | _ => panic!("Expected int as arg2 for Lt"),
+            }
+        }
+    })),
+    | Cons => Value::Closure(Box::new({
+        let protocol = Rc::clone(&protocol);
+        move |head| {
+            Value::Closure(Box::new({
+                let head = Rc::new(eval(head, &protocol));
+                let protocol = Rc::clone(&protocol);
+                move |tail| {
+                    let tail = Rc::new(eval(tail, &protocol));
+                    Value::Cons(Rc::clone(&head), tail)
+                }
+            }))
+        }
+    })),
+    | Car => Value::Closure(Box::new({
+        let protocol = Rc::clone(&protocol);
+        move |list| {
+            match eval(list, &protocol) {
+            | Value::Cons(head, _) => Rc::try_unwrap(head)
+                .expect("Could not unwrap `cons` head in `car`"),
+            | _ => panic!("Expected `cons` as argument to `car`"),
+            }
+        }
+    })),
+    | Cdr => Value::Closure(Box::new({
+        let protocol = Rc::clone(&protocol);
+        move |list| {
+            match eval(list, &protocol) {
+            | Value::Cons(_, tail) => Rc::try_unwrap(tail)
+                .expect("Could not unwrap `cons` head in `cdr`"),
+            | _ => panic!("Expected `cons` as argument to `cdr`"),
             }
         }
     })),
