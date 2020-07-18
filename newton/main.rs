@@ -16,9 +16,14 @@ fn main() -> anyhow::Result<()> {
     let mut args = env::args().skip(1);
 
     let mode = match args.next().as_deref() {
-    | Some("t") | Some("test") => Mode::Test,
-    | Some("p") | Some("protocol") => Mode::Protocol,
-    | other => return Err(anyhow!("Unknown mode '{:?}', expected '[t]est' or '[p]rotocol'", other)),
+        Some("t") | Some("test") => Mode::Test,
+        Some("p") | Some("protocol") => Mode::Protocol,
+        other => {
+            return Err(anyhow!(
+                "Unknown mode '{:?}', expected '[t]est' or '[p]rotocol'",
+                other
+            ))
+        }
     };
 
     let path = args.next().unwrap();
@@ -27,14 +32,19 @@ fn main() -> anyhow::Result<()> {
     let arena = Arena::new();
 
     match mode {
-    | Mode::Protocol => {
-        let protocol = icfp::parse::interaction_protocol(&arena, tokens);
-        dbg!(protocol);
-    }
-    | Mode::Test => {
-        let test = icfp::parse::test_suite(&arena, tokens);
-        dbg!(test);
-    }
+        Mode::Protocol => {
+            let protocol = icfp::parse::interaction_protocol(&arena, tokens);
+            dbg!(protocol);
+        }
+        Mode::Test => {
+            let test = icfp::parse::test_suite(&arena, tokens);
+            dbg!(&test);
+            for t in test.equals {
+                let lhs = icfp::eval(&arena, &t.lhs);
+                let rhs = icfp::eval(&arena, &t.rhs);
+                assert_eq!(lhs, rhs)
+            }
+        }
     }
 
     Ok(())
