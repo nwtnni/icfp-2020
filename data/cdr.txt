@@ -1,0 +1,2 @@
+ap cdr ap ap cons x0 x1   =   x1
+ap cdr x2   =   ap x2 f
