@@ -4,7 +4,7 @@ use once_cell::sync;
 
 mod api;
 pub mod ast;
-mod draw;
+pub mod draw;
 mod eval;
 mod lex;
 pub mod parse;

@@ -49,5 +49,22 @@ pub fn draw(v: &Value) {
     clear();
     _draw(v);
     io::stdout().flush().unwrap();
-    loop{}
+}
+
+fn _multidraw(v: &Value) {
+    match v {
+    | Value::Cons(image, rest) => {
+        _draw(image);
+        _multidraw(rest);
+    },
+    | Value::Nil => (),
+    | _ => panic!("Not a valid list of images"),
+    }
+}
+
+pub fn multidraw(v: &Value) {
+    hide_cursor();
+    clear();
+    _multidraw(v);
+    io::stdout().flush().unwrap();
 }
