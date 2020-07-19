@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter::Peekable;
 use std::rc::Rc;
 
 use crate::ast;
@@ -21,14 +22,25 @@ pub fn interaction_protocol<I: IntoIterator<Item = Token>>(
 pub fn test_suite<I: IntoIterator<Item = Token>>(
     tokens: I,
 ) -> ast::TestSuite {
-    let mut tokens = tokens.into_iter();
+    let mut tokens = tokens.into_iter().peekable();
     let mut equals = Vec::new();
-    while let Some(equal) = equal(&mut tokens) {
-        equals.push(equal);
+    while let Some(t) = test(&mut tokens) {
+        equals.push(t);
     }
     ast::TestSuite {
         equals,
     }
+}
+
+fn test<I: Iterator<Item = Token>>(
+    tokens: &mut Peekable<I>
+) -> Option<ast::Test> {
+    let mut assignments = HashMap::new();
+    while let Some(Token::Var(_)) = dbg!(tokens.peek()) {
+        let (var, exp) = assign(tokens).expect("Failed to parse expression for assignment");
+        assignments.insert(var, Rc::new(exp));
+    }
+    Some(dbg!(ast::Test{assignments: Rc::new(assignments), equal: equal(tokens)?}))
 }
 
 fn assign<I: Iterator<Item = Token>>(

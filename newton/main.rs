@@ -38,11 +38,16 @@ fn main() -> anyhow::Result<()> {
         }
         Mode::Test => {
             let test = icfp::parse::test_suite(tokens);
-            let protocol = Rc::new(icfp::ast::Protocol::default());
             dbg!(&test);
             for t in test.equals {
-                let lhs = dbg!(icfp::eval(&t.lhs, &protocol));
-                let rhs = dbg!(icfp::eval(&t.rhs, &protocol));
+                let protocol = Rc::new(
+                    icfp::ast::Protocol{
+                        assignments: t.assignments,
+                        galaxy: 0,
+                    }
+                );
+                let lhs = dbg!(icfp::eval(&t.equal.lhs, &protocol));
+                let rhs = dbg!(icfp::eval(&t.equal.rhs, &protocol));
                 assert_eq!(lhs, rhs)
             }
         }

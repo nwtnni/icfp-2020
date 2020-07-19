@@ -19,7 +19,13 @@ impl ops::Index<u64> for Protocol {
 /// Test suite.
 #[derive(Clone, Debug)]
 pub struct TestSuite {
-    pub equals: Vec<Equal>,
+    pub equals: Vec<Test>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Test {
+    pub assignments: Rc<HashMap<u64, Rc<Exp>>>,
+    pub equal: Equal
 }
 
 #[derive(Clone, Debug)]
