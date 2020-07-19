@@ -27,7 +27,7 @@ fn assign<I: Iterator<Item = Token>>(
     | _ => panic!("Invalid assignment: expected var or 'galaxy' token"),
     };
 
-    match dbg!(tokens.next()) {
+    match tokens.next() {
     | Some(Token::Assign) => (),
     | _ => panic!("Invalid assignment: expected '=' token"),
     }

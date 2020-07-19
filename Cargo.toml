@@ -37,6 +37,10 @@ path = "newton/main.rs"
 name = "submit"
 path = "submit/main.rs"
 
+[[bin]]
+name = "stateless"
+path = "stateless/main.rs"
+
 [dependencies]
 anyhow = "1.0"
 env_logger = "0.7"
