@@ -41,9 +41,9 @@ fn main() -> anyhow::Result<()> {
             let protocol = Rc::new(icfp::ast::Protocol::default());
             dbg!(&test);
             for t in test.equals {
-                let lhs = icfp::eval(&t.lhs, &protocol);
-                let rhs = icfp::eval(&t.rhs, &protocol);
-                assert_eq!(lhs, rhs);
+                let lhs = dbg!(icfp::eval(&t.lhs, &protocol));
+                let rhs = dbg!(icfp::eval(&t.rhs, &protocol));
+                assert_eq!(lhs, rhs)
             }
         }
     }
