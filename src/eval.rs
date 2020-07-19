@@ -1,9 +1,11 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::Client;
 use crate::ast;
+use crate::Client;
+use crate::draw;
 use crate::PROTOCOL;
+use crate::transport;
 
 pub enum Value {
     Int(i64),
@@ -86,7 +88,7 @@ pub fn interact(
     client: &Client,
     state: Value,
     vector: Value,
-) -> (Value, Value) {
+) -> Value {
     step(
         client,
         eval(
@@ -101,21 +103,25 @@ pub fn interact(
     )
 }
 
-#[allow(dead_code)]
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
 fn step(
     client: &Client,
     list: Value,
-) -> (Value, Value) {
+) -> Value {
     if let Value::Cons(flag, tail) = list {
     if let Value::Cons(state, tail) = *tail {
     if let Value::Cons(data, tail) = *tail {
     if let Value::Nil = *tail {
         if let Value::Int(0) = *flag {
-            return (*state, todo!("multipledraw"));
+            draw::multidraw(&data);
+            return *state;
         } else {
-            return interact(client, *state, todo!("send data"));
+            return interact(
+                client,
+                *state,
+                client
+                    .send_alien_message(transport::modulate_list(*data))
+                    .expect("Failed to send message to server"),
+            );
         }
     }}}}
     panic!("Invalid arguments to `step`");

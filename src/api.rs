@@ -5,6 +5,9 @@ use anyhow::anyhow;
 use anyhow::Context as _;
 use reqwest::blocking;
 
+use crate::eval;
+use crate::transport;
+
 /// Responsible for communicating with the central ICFP server.
 ///
 /// Abstracts over the communication protocol and transport method.
@@ -52,7 +55,10 @@ impl Client {
             .with_context(|| anyhow!("Failed to retrieve alien response for id '{}'", id))
     }
 
-    pub fn send_alien_message(&self, message: String) -> anyhow::Result<String> {
+    pub fn send_alien_message(
+        &self,
+        message: String
+    ) -> anyhow::Result<eval::Value> {
         log::info!("Sending alien message");
         self.inner
             .post(&format!("{}/aliens/send", &self.url))
@@ -60,6 +66,7 @@ impl Client {
             .body(message)
             .send()
             .and_then(Self::extract)
+            .map(|response| transport::demodulate(&response))
             .with_context(|| anyhow!("Failed to send alien message"))
     }
 
