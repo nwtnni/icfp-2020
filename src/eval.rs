@@ -1,312 +1,221 @@
-use std::fmt;
-use std::sync::Arc;
+use std::rc::Rc;
 
-use crate::ast;
 use crate::Client;
+use crate::ast::Atom;
+use crate::ast::AtomCache;
+use crate::ast::Exp;
+use crate::ast::Protocol;
 use crate::draw;
-use crate::PROTOCOL;
-use crate::transport;
 
-pub enum Value {
-    Int(i64),
-    Bool(bool),
-    Cons(Box<Value>, Box<Value>),
-    Var(u64),
-    Nil,
-    Closure(Box<dyn Fn(&Arc<ast::Exp>) -> Value>),
-}
-
-impl Value {
-    fn to_exp(&self) -> ast::Exp {
-        match self {
-        | Value::Int(int) => ast::Exp::Int(*int),
-        | Value::Bool(bool) => ast::Exp::Bool(*bool),
-        | Value::Var(var) => ast::Exp::Var(*var),
-        | Value::Nil => ast::Exp::Nil,
-        | Value::Cons(head, tail) => {
-            ast::Exp::App(
-                Arc::new(ast::Exp::App(
-                    Arc::new(ast::Exp::Cons),
-                    Arc::new(head.to_exp()),
-                )),
-                Arc::new(tail.to_exp()),
-            )
-        }
-        | Value::Closure(_) => panic!("Cannot convert closure to expression"),
-        }
-    }
-}
-
-impl Clone for Value {
-    fn clone(&self) -> Self {
-        use Value::*;
-        match self {
-        | Closure(_) => panic!("Cannot clone closure"),
-        | Int(n) => Int(*n),
-        | Bool(n) => Bool(*n),
-        | Cons(h, t) => Cons(Box::clone(h), Box::clone(t)),
-        | Var(n) => Var(*n),
-        | Nil => Nil,
-        }
-    }
-}
-
-impl fmt::Debug for Value {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Value::*;
-        match self {
-        | Closure(_) => write!(f, "<closure>"),
-        | Int(n) => write!(f, "{}", n),
-        | Bool(n) => write!(f, "{}", n),
-        | Cons(n1, n2) => f.debug_tuple("")
-            .field(n1)
-            .field(n2)
-            .finish(),
-        | Var(n) => write!(f, ":{}", n),
-        | Nil => write!(f, "()"),
-        }
-    }
-}
-
-impl Eq for Value {}
-
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> bool {
-        use Value::*;
-        match (self, other) {
-        | (Closure(_), _)
-        | (_, Closure(_)) => panic!("Cannot clone closure"),
-        | (Int(n1), Int(n2)) => n1 == n2,
-        | (Bool(n1), Bool(n2)) => n1 == n2,
-        | (Cons(n1, m1), Cons(n2, m2)) => n1 == n2 && m1 == m2,
-        | (Var(n1), Var(n2)) => n1 == n2,
-        | (Nil, Nil) => true,
-        | _ => false,
-        }
-    }
-}
-
-#[allow(dead_code)]
 pub fn interact(
-    client: &Client,
-    state: Value,
-    vector: Value,
-) -> Value {
-    step(
-        client,
-        eval(
-            &ast::Exp::App(
-                Arc::new(ast::Exp::App(
-                    Arc::clone(&PROTOCOL[PROTOCOL.galaxy]),
-                    Arc::new(state.to_exp()),
-                )),
-                Arc::new(vector.to_exp()),
+    c: &Client,
+    p: &Protocol,
+    a: &mut AtomCache,
+
+    s: Rc<Exp>,
+    v: Rc<Exp>,
+) -> Rc<Exp> {
+    let e = eval(
+        &Exp::app(Exp::app(Rc::clone(&p[p.galaxy]), s), v),
+        p,
+        a,
+    );
+
+    _interact(c, p, a, e)
+}
+
+fn _interact(
+    c: &Client,
+    p: &Protocol,
+    a: &mut AtomCache,
+    e: Rc<Exp>,
+) -> Rc<Exp> {
+    let (flag, tail) = e.to_cons();
+    let (state, tail) = tail.to_cons();
+    let (data, tail) = tail.to_cons();
+
+    assert_eq!(**tail, Exp::Atom(Atom::Nil));
+
+    if let Exp::Atom(Atom::Int(0)) = &**flag {
+        draw::multidraw(&data);
+        Rc::clone(state)
+    } else {
+        let new_data = c
+            .send_alien_message(a, data)
+            .expect("Failed to send message to server");
+        interact(c, p, a, Rc::clone(state), new_data)
+    }
+}
+
+pub fn eval(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
+    if let Some(cached) = e.get_cached() {
+        return cached;
+    }
+
+    let mut prev = Rc::clone(&e);
+
+    loop {
+        let next = step(&prev, p, a);
+
+        // Found fixpoint of `step` function
+        if prev == next {
+            e.set_cached(Rc::clone(&next));
+            return next;
+        }
+
+        prev = next;
+    }
+}
+
+fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
+    if let Some(cached) = e.get_cached() {
+        return cached;
+    }
+
+    // Evaluate atoms:
+    //
+    // ```text
+    // a
+    // ```
+    let (f, x) = match &**e {
+    | Exp::Atom(Atom::Var(var)) => return Rc::clone(&p[*var]),
+    | Exp::Atom(atom) => return a.get(*atom),
+    | Exp::App(f, x, _) => (f, x),
+    };
+
+    let f = eval(f, p, a);
+
+    // Evaluate single-argument functions:
+    //
+    // ```text
+    //   app
+    //  /   \
+    // f     x
+    // ```
+    let (f, x, y) = match &*f {
+    | Exp::Atom(Atom::Neg) => {
+        let x = -eval(x, p, a).to_int();
+        return a.get(Atom::Int(x));
+    }
+    | Exp::Atom(Atom::Inc) => {
+        let x = eval(x, p, a).to_int();
+        let y = 1;
+        return a.get(Atom::Int(x + y))
+    }
+    | Exp::Atom(Atom::Dec) => {
+        let x = eval(x, p, a).to_int();
+        let y = 1;
+        return a.get(Atom::Int(x - y))
+    }
+    | Exp::Atom(Atom::I) => return Rc::clone(x),
+    | Exp::Atom(Atom::Nil) => return a.get(Atom::Bool(true)),
+    | Exp::Atom(Atom::IsNil) => return Exp::app(
+        Rc::clone(x),
+        Exp::app(
+            a.get(Atom::Bool(true)),
+            Exp::app(
+                a.get(Atom::Bool(true)),
+                a.get(Atom::Bool(false)),
             ),
         ),
-    )
-}
+    ),
+    | Exp::Atom(Atom::Car) => return Exp::app(
+        Rc::clone(x),
+        a.get(Atom::Bool(true)),
+    ),
+    | Exp::Atom(Atom::Cdr) => return Exp::app(
+        Rc::clone(x),
+        a.get(Atom::Bool(false)),
+    ),
+    | Exp::Atom(_) => return Rc::clone(e),
+    // Note: application is on the left, so we swap arguments
+    | Exp::App(f, y, _) => (f, y, x),
+    };
 
-fn step(
-    client: &Client,
-    list: Value,
-) -> Value {
-    if let Value::Cons(flag, tail) = list {
-    if let Value::Cons(state, tail) = *tail {
-    if let Value::Cons(data, tail) = *tail {
-    if let Value::Nil = *tail {
-        log::debug!("Flag: {:?}", &flag);
-        log::debug!("State: {:?}", &state);
-        log::debug!("Data: {:?}", &data);
-        if let Value::Int(0) = *flag {
-            draw::multidraw(&data);
-            return *state;
-        } else {
-            return interact(
-                client,
-                *state,
-                client
-                    .send_alien_message(transport::modulate_list(*data))
-                    .expect("Failed to send message to server"),
-            );
-        }
-    }}}}
-    panic!("Invalid arguments to `step`");
-}
+    let f = eval(f, p, a);
 
-pub fn eval(expr: &ast::Exp) -> Value {
-
-    use ast::Exp::*;
-
-    log::debug!("Evaluating: {:?}", expr);
-
-    match expr {
-    | Nil => Value::Nil,
-    | Int(n) => Value::Int(*n),
-    | Var(v) => eval(&PROTOCOL[*v]),
-    | Bool(b) => Value::Bool(*b),
-    | App(f, v) => dbg!(closure(eval(&f))(&v)),
-    | Neg => Value::Closure(Box::new(|e| Value::Int(-int(eval(e))))),
-    | Inc => Value::Closure(Box::new(|e| Value::Int(int(eval(e)) + 1))),
-    | Dec => Value::Closure(Box::new(|e| Value::Int(int(eval(e)) - 1))),
-    | IsNil => Value::Closure(Box::new(|e| {
-        match eval(e) {
-        | Value::Nil => Value::Bool(true),
-        | Value::Cons(_, _) => Value::Bool(false),
-        | _ => panic!("Expected Nil or Cons as argument for IsNil"),
-        }
-    })),
-    | Add => Value::Closure(Box::new({
-        |e1| {
-            Value::Closure(Box::new({
-                let e1 = Arc::clone(&e1);
-                move |e2| {
-                    let n1 = int(eval(&e1));
-                    let n2 = int(eval(e2));
-                    Value::Int(n1 + n2)
-                }
-            }))
-        }
-    })),
-    | Mul => Value::Closure(Box::new({
-        |e1| {
-            Value::Closure(Box::new({
-                let e1 = Arc::clone(&e1);
-                move |e2| {
-                    let n1 = int(eval(&e1));
-                    let n2 = int(eval(e2));
-                    Value::Int(n1 * n2)
-                }
-            }))
-        }
-    })),
-    | Div => Value::Closure(Box::new({
-        |e1| {
-            Value::Closure(Box::new({
-                let e1 = Arc::clone(&e1);
-                move |e2| {
-                    let n1 = int(eval(&e1));
-                    let n2 = int(eval(e2));
-                    Value::Int(n1 / n2)
-                }
-            }))
-        }
-    })),
-    | Eq => Value::Closure(Box::new({
-        |e1| {
-            Value::Closure(Box::new({
-                let e1 = Arc::clone(&e1);
-                move |e2| {
-                    let n1 = int(eval(&e1));
-                    let n2 = int(eval(e2));
-                    Value::Bool(n1 == n2)
-                }
-            }))
-        }
-    })),
-    | Lt => Value::Closure(Box::new({
-        |e1| {
-            Value::Closure(Box::new({
-                let e1 = Arc::clone(&e1);
-                move |e2| {
-                    let n1 = int(eval(&e1));
-                    let n2 = int(eval(e2));
-                    Value::Bool(n1 < n2)
-                }
-            }))
-        }
-    })),
-    | Cons => Value::Closure(Box::new({
-        |head| {
-            Value::Closure(Box::new({
-                let head = Arc::clone(head);
-                move |tail| {
-                    let head = Box::new(eval(&head));
-                    let tail = Box::new(eval(tail));
-                    Value::Cons(head, tail)
-                }
-            }))
-        }
-    })),
-    | Car => Value::Closure(Box::new(|list| { let (head, _) = cons(eval(list)); head })),
-    | Cdr => Value::Closure(Box::new(|list| { let (tail, _) = cons(eval(list)); tail })),
-    | S => Value::Closure(Box::new({
-        |x0| {
-            Value::Closure(Box::new({
-                let x0 = Arc::clone(x0);
-                move |x1| {
-                    Value::Closure(Box::new({
-                        let x0 = Arc::clone(&x0);
-                        let x1 = Arc::clone(x1);
-                        move |x2| {
-                            let f = (closure(eval(&x0)))(&x2);
-                            (closure(f))(&Arc::new(App(Arc::clone(&x1), Arc::clone(&x2))))
-                        }
-                    }))
-                }
-            }))
-        }
-    })),
-    | I => Value::Closure(Box::new(|x| eval(x))),
-    | B => Value::Closure(Box::new({
-        |x0| {
-            Value::Closure(Box::new({
-                let x0 = Arc::clone(x0);
-                move |x1| {
-                    Value::Closure(Box::new({
-                        let x0 = Arc::clone(&x0);
-                        let x1 = Arc::clone(x1);
-                        move |x2| {
-                            (closure(eval(&x0)))(&Arc::new(App(Arc::clone(&x1), Arc::clone(&x2))))
-                        }
-                    }))
-                }
-            }))
-        }
-    })),
-    | C => Value::Closure(Box::new({
-        |x0| {
-            Value::Closure(Box::new({
-                let x0 = Arc::clone(x0);
-                move |x1| {
-                    Value::Closure(Box::new({
-                        let x0 = Arc::clone(&x0);
-                        let x1 = Arc::clone(x1);
-                        move |x2| {
-                            (closure((closure(eval(&x0)))(&x2)))(&x1)
-                        }
-                    }))
-                }
-            }))
-        }
-    })),
-    | _ => todo!(),
+    // Evaluate two-argument functions:
+    //
+    // ```text
+    //      app
+    //     /   \
+    //   app    y
+    //  /   \
+    // f    x
+    // ```
+    let (f, x, y, z) = match &*f {
+    | Exp::Atom(Atom::Bool(true)) => return Rc::clone(x),
+    | Exp::Atom(Atom::Bool(false)) => return Rc::clone(y),
+    | Exp::Atom(Atom::Add) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x + y));
     }
-}
-
-fn int(value: Value) -> i64 {
-    match value {
-    | Value::Int(int) => int,
-    | _ => panic!("Expected int"),
+    | Exp::Atom(Atom::Mul) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x * y));
     }
-}
-
-fn cons(value: Value) -> (Value, Value) {
-    match value {
-    | Value::Cons(head, tail) => (*head, *tail),
-    | _ => panic!("Expected cons"),
+    | Exp::Atom(Atom::Div) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x / y));
     }
-}
-
-fn closure(value: Value) -> Box<dyn Fn(&Arc<ast::Exp>) -> Value> {
-    match value {
-    | Value::Closure(func) => func,
-    | Value::Bool(true) => {
-        Box::new(|lhs| {
-            let lhs = Arc::clone(&lhs);
-            Value::Closure(Box::new(move |_| eval(&lhs)))
-        })
+    | Exp::Atom(Atom::Lt) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Bool(x < y));
     }
-    | Value::Bool(false) => Box::new(|_| Value::Closure(Box::new(|rhs| eval(&rhs)))),
-    | value => panic!(format!("Expected closure or bool but got: {:?}", value)),
+    | Exp::Atom(Atom::Eq) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Bool(x == y));
+    }
+    | Exp::Atom(Atom::Cons) => {
+        let cons = Exp::app(
+            Exp::app(
+                a.get(Atom::Cons),
+                eval(x, p, a),
+            ),
+            eval(y, p, a),
+        );
+        cons.set_cached(Rc::clone(&cons));
+        return cons;
+    }
+    | Exp::Atom(_) => return Rc::clone(e),
+    | Exp::App(f, z, _) => (f, z, x, y),
+    };
+
+    let f = eval(f, p, a);
+
+    // Evaluate three-argument functions:
+    //
+    // ```text
+    //         app
+    //        /   \
+    //      app    z
+    //     /   \
+    //   app    y
+    //  /   \
+    // f     x
+    // ```
+    match &*f {
+    | Exp::Atom(Atom::S) => Exp::app(
+        Exp::app(Rc::clone(x), Rc::clone(z)),
+        Exp::app(Rc::clone(y), Rc::clone(z)),
+    ),
+    | Exp::Atom(Atom::C) => Exp::app(
+        Exp::app(Rc::clone(x), Rc::clone(z)),
+        Rc::clone(y),
+    ),
+    | Exp::Atom(Atom::B) => Exp::app(
+        Rc::clone(x),
+        Exp::app(Rc::clone(y), Rc::clone(z)),
+    ),
+    | Exp::Atom(Atom::Cons) => Exp::app(
+        Exp::app(Rc::clone(z), Rc::clone(x)),
+        Rc::clone(y),
+    ),
+    | _ => Rc::clone(e),
     }
 }

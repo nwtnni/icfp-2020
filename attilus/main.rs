@@ -1,29 +1,28 @@
-use icfp::eval;
-use icfp::lex;
-use icfp::parse::exp;
-use icfp::transport::modulate_list;
-use icfp::transport::demodulate;
-use icfp::transport::demodulate_list;
-use icfp::Value;
-use std::vec::Vec;
+// use icfp::eval;
+// use icfp::lex;
+// use icfp::parse::exp;
+// use icfp::transport::modulate;
+// use icfp::transport::demodulate;
+// use icfp::transport::demodulate_list;
+// use std::vec::Vec;
 
-#[allow(dead_code)]
-fn build_vec(vec: &mut Vec<i64>, acc: Value) -> Value {
-    if vec.is_empty() {
-        return acc
-    };
-    // let (x, y) = vec.pop().expect("Empty vec?");
-    let x = vec.pop().expect("Empty vec?");
-    build_vec(
-        vec,
-        Value::Cons(
-            Box::new(
-                Value::Int(x)
-            ),
-            Box::new(acc)
-        )
-    )
-}
+// #[allow(dead_code)]
+// fn build_vec(vec: &mut Vec<i64>, acc: Value) -> Value {
+//     if vec.is_empty() {
+//         return acc
+//     };
+//     // let (x, y) = vec.pop().expect("Empty vec?");
+//     let x = vec.pop().expect("Empty vec?");
+//     build_vec(
+//         vec,
+//         Value::Cons(
+//             Box::new(
+//                 Value::Int(x)
+//             ),
+//             Box::new(acc)
+//         )
+//     )
+// }
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
@@ -39,10 +38,10 @@ fn main() -> anyhow::Result<()> {
     //         ).expect("bruh")));
     // print!("{}", modulate_list(draw_args));
 
-    println!("{:?}", demodulate_list("110110000111011111100001001111110101000000"));
-    println!("{:?}", demodulate_list("110110000111011111100001001111110100110000"));
-    println!("");
-    println!("{:?}", demodulate("1101100001110111110101000110010111000"));
+//     println!("{:?}", demodulate_list("110110000111011111100001001111110101000000"));
+//     println!("{:?}", demodulate_list("110110000111011111100001001111110100110000"));
+//     println!("");
+//     println!("{:?}", demodulate("1101100001110111110101000110010111000"));
 
     Ok(())
 }
