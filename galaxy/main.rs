@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
         let in_state = std::mem::replace(&mut state, Rc::clone(&nil));
         let in_vector = vectors.pop().expect("Missing vector");
 
-        log::info!("Sending {:?}", in_vector);
+        log::info!("[send]: {}", &in_vector);
 
         let (out_state, out_data) = icfp::interact(
             &client,
@@ -189,6 +189,7 @@ fn main() -> anyhow::Result<()> {
             }
         };
 
+        log::info!("[recv]: {}", &out_state);
         let _ = std::mem::replace(&mut state, out_state);
     }
 
