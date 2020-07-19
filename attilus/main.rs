@@ -1,12 +1,11 @@
-use icfp::ast;
 use icfp::eval;
 use icfp::lex;
 use icfp::parse::exp;
 use icfp::transport::modulate_list;
 use icfp::Value;
 use std::vec::Vec;
-use std::rc::Rc;
 
+#[allow(dead_code)]
 fn build_vec(vec: &mut Vec<i64>, acc: Value) -> Value {
     if vec.is_empty() {
         return acc
@@ -36,8 +35,8 @@ fn main() -> anyhow::Result<()> {
         dbg!(&exp(
             &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil
 ")
-            ).expect("bruh")),
-        &Rc::new(ast::Protocol::default()));
+            ).expect("bruh"))
+    );
     print!("{}", modulate_list(draw_args));
 
     Ok(())

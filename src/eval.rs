@@ -1,6 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
+use crate::Client;
 use crate::ast;
 use crate::PROTOCOL;
 
@@ -11,6 +12,27 @@ pub enum Value {
     Var(u64),
     Nil,
     Closure(Box<dyn Fn(&Arc<ast::Exp>) -> Value>),
+}
+
+impl Value {
+    fn to_exp(&self) -> ast::Exp {
+        match self {
+        | Value::Int(int) => ast::Exp::Int(*int),
+        | Value::Bool(bool) => ast::Exp::Bool(*bool),
+        | Value::Var(var) => ast::Exp::Var(*var),
+        | Value::Nil => ast::Exp::Nil,
+        | Value::Cons(head, tail) => {
+            ast::Exp::App(
+                Arc::new(ast::Exp::App(
+                    Arc::new(ast::Exp::Cons),
+                    Arc::new(head.to_exp()),
+                )),
+                Arc::new(tail.to_exp()),
+            )
+        }
+        | Value::Closure(_) => panic!("Cannot convert closure to expression"),
+        }
+    }
 }
 
 impl Clone for Value {
@@ -57,6 +79,46 @@ impl PartialEq for Value {
         | _ => false,
         }
     }
+}
+
+#[allow(dead_code)]
+pub fn interact(
+    client: &Client,
+    state: Value,
+    vector: Value,
+) -> (Value, Value) {
+    step(
+        client,
+        eval(
+            &ast::Exp::App(
+                Arc::new(ast::Exp::App(
+                    Arc::clone(&PROTOCOL[PROTOCOL.galaxy]),
+                    Arc::new(state.to_exp()),
+                )),
+                Arc::new(vector.to_exp()),
+            ),
+        ),
+    )
+}
+
+#[allow(dead_code)]
+#[allow(unreachable_code)]
+#[allow(unused_variables)]
+fn step(
+    client: &Client,
+    list: Value,
+) -> (Value, Value) {
+    if let Value::Cons(flag, tail) = list {
+    if let Value::Cons(state, tail) = *tail {
+    if let Value::Cons(data, tail) = *tail {
+    if let Value::Nil = *tail {
+        if let Value::Int(0) = *flag {
+            return (*state, todo!("multipledraw"));
+        } else {
+            return interact(client, *state, todo!("send data"));
+        }
+    }}}}
+    panic!("Invalid arguments to `step`");
 }
 
 pub fn eval(expr: &ast::Exp) -> Value {
