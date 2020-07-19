@@ -2,6 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::ast;
+use crate::PROTOCOL;
 
 pub enum Value {
     Int(i64),
@@ -65,7 +66,7 @@ pub fn eval(expr: &ast::Exp) -> Value {
     match expr {
     | Nil => Value::Nil,
     | Int(n) => Value::Int(*n),
-    | Var(v) => Value::Var(*v),
+    | Var(v) => eval(&PROTOCOL[*v]),
     | Bool(b) => Value::Bool(*b),
     | App(f, v) => closure(eval(&f))(&v),
     | Neg => Value::Closure(Box::new(|e| Value::Int(-int(eval(e))))),
