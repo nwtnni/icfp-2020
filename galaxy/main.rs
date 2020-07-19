@@ -19,6 +19,8 @@ use icfp::ast::Exp;
 const WIDTH: usize = 1920;
 const HEIGHT: usize = 1080;
 
+static INITIAL_VECTORS: &str = include_str!("init.txt");
+
 fn main() -> anyhow::Result<()> {
 
     env_logger::init();
@@ -35,10 +37,12 @@ fn main() -> anyhow::Result<()> {
     let mut cache = AtomCache::default();
     let nil = cache.get(Atom::Nil);
     let mut state = Rc::clone(&nil);
-    let mut vector = Exp::cons(
+
+    let mut vectors = initial_vectors(INITIAL_VECTORS);
+    vectors.push(Exp::cons(
         Exp::Atom(Atom::Int(0)),
         Exp::Atom(Atom::Int(0)),
-    );
+    ));
 
     let mut title_buffer = String::new();
     let mut data_buffer = Vec::new();
@@ -63,7 +67,9 @@ fn main() -> anyhow::Result<()> {
     while window.is_open() {
 
         let in_state = std::mem::replace(&mut state, Rc::clone(&nil));
-        let in_vector = std::mem::replace(&mut vector, Rc::clone(&nil));
+        let in_vector = vectors.pop().expect("Missing vector");
+
+        log::info!("Sending {:?}", in_vector);
 
         let (out_state, out_data) = icfp::interact(
             &client,
@@ -86,7 +92,7 @@ fn main() -> anyhow::Result<()> {
             &mut window,
         )?;
 
-        let (x, y) = loop {
+        while vectors.is_empty() {
 
             let mut dirty = false;
 
@@ -94,7 +100,10 @@ fn main() -> anyhow::Result<()> {
                 if window.get_mouse_down(MouseButton::Left) {
                     if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
                         debounce = time::Instant::now();
-                        break (x as i64 / scale + current_x, y as i64 / scale + current_y);
+                        vectors.push(Exp::cons(
+                            Exp::Atom(Atom::Int(x as i64 / scale + current_x)),
+                            Exp::Atom(Atom::Int(y as i64 / scale + current_y)),
+                        ));
                     }
                 }
             }
@@ -181,10 +190,6 @@ fn main() -> anyhow::Result<()> {
         };
 
         let _ = std::mem::replace(&mut state, out_state);
-        let _ = std::mem::replace(&mut vector, Exp::cons(
-            Exp::Atom(Atom::Int(x)),
-            Exp::Atom(Atom::Int(y)),
-        ));
     }
 
     Ok(())
@@ -242,4 +247,37 @@ fn redraw(
     window
         .update_with_buffer(&window_buffer, WIDTH, HEIGHT)
         .map_err(anyhow::Error::from)
+}
+
+fn initial_vectors(text: &str) -> Vec<Rc<Exp>> {
+    text.trim()
+        .split_whitespace()
+        .rev()
+        .map(|pair| {
+            let mut iter = pair.split(',');
+
+            let x = iter
+                .next()
+                .unwrap()
+                .trim()
+                .parse::<i64>()
+                .unwrap();
+
+            let y = iter
+                .next()
+                .unwrap()
+                .trim()
+                .parse::<i64>()
+                .unwrap();
+
+            vector(x, y)
+        })
+        .collect()
+}
+
+fn vector(x: i64, y: i64) -> Rc<Exp> {
+    Exp::cons(
+        Exp::Atom(Atom::Int(x)),
+        Exp::Atom(Atom::Int(y)),
+    )
 }
