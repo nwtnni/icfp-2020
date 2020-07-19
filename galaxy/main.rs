@@ -1,3 +1,4 @@
+use std::cmp;
 use std::env;
 use std::fmt::Write as _;
 use std::fs;
@@ -8,8 +9,6 @@ use minifb::Key;
 use minifb::KeyRepeat;
 use minifb::MouseButton;
 use minifb::MouseMode;
-use minifb::Scale;
-use minifb::ScaleMode;
 use minifb::Window;
 use minifb::WindowOptions;
 
@@ -17,8 +16,8 @@ use icfp::ast::Atom;
 use icfp::ast::AtomCache;
 use icfp::ast::Exp;
 
-const WIDTH: usize = 80;
-const HEIGHT: usize = 45;
+const WIDTH: usize = 1920;
+const HEIGHT: usize = 1080;
 
 fn main() -> anyhow::Result<()> {
 
@@ -46,18 +45,15 @@ fn main() -> anyhow::Result<()> {
 
     let mut current_x = 0i64;
     let mut current_y = 0i64;
-    let speed = 1;
+    let mut speed = 1;
+    let mut scale = 16;
 
     let mut window_buffer = vec![0u32; WIDTH * HEIGHT];
     let mut window = Window::new(
         "Galaxy UI",
         WIDTH,
         HEIGHT,
-        WindowOptions {
-            scale: Scale::X16,
-            scale_mode: ScaleMode::Stretch,
-            .. WindowOptions::default()
-        },
+        WindowOptions::default(),
     )?;
 
     window.limit_update_rate(Some(time::Duration::from_micros(16600)));
@@ -78,7 +74,14 @@ fn main() -> anyhow::Result<()> {
         data_buffer.clear();
         icfp::draw::multidraw_exp(&out_data, &mut data_buffer);
 
-        redraw(&mut window_buffer, &data_buffer, current_x, current_y, &mut window)?;
+        redraw(
+            &mut window_buffer,
+            &data_buffer,
+            current_x,
+            current_y,
+            scale,
+            &mut window,
+        )?;
 
         let (x, y) = loop {
 
@@ -86,7 +89,7 @@ fn main() -> anyhow::Result<()> {
 
             if window.get_mouse_down(MouseButton::Left) {
                 if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
-                    break (x as i64 + current_x, y as i64 + current_y);
+                    break (x as i64 / scale + current_x, y as i64 / scale + current_y);
                 }
             }
             if window.is_key_pressed(Key::Escape, KeyRepeat::Yes) {
@@ -116,17 +119,42 @@ fn main() -> anyhow::Result<()> {
                 dirty = true;
             }
 
+            if window.is_key_pressed(Key::Q, KeyRepeat::Yes) {
+                speed = cmp::max(speed, 1);
+            }
+            if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
+                speed += 1;
+            }
+
+            if window.is_key_pressed(Key::Minus, KeyRepeat::Yes) {
+                scale = cmp::max(scale >> 1, 1);
+                dirty = true;
+            }
+            if window.is_key_pressed(Key::Equal, KeyRepeat::Yes) {
+                scale = cmp::min(scale << 1, 32);
+                dirty = true;
+            }
+
             title_buffer.clear();
             write!(
                 &mut title_buffer,
-                "Galaxy Position: ({}, {})",
+                "Galaxy Position: ({}, {}) @ Speed {} & Scale {}",
                 current_x,
                 current_y,
+                speed,
+                scale,
             )?;
             window.set_title(&title_buffer);
 
             if dirty {
-                redraw(&mut window_buffer, &data_buffer, current_x, current_y, &mut window)?;
+                redraw(
+                    &mut window_buffer,
+                    &data_buffer,
+                    current_x,
+                    current_y,
+                    scale,
+                    &mut window,
+                )?;
             } else {
                 window.update();
             }
@@ -147,6 +175,7 @@ fn redraw(
     data_buffer: &[Vec<(i64, i64)>],
     current_x: i64,
     current_y: i64,
+    scale: i64,
     window: &mut Window,
 ) -> anyhow::Result<()> {
     // Clear window buffer
@@ -154,20 +183,30 @@ fn redraw(
         .iter_mut()
         .for_each(|pixel| *pixel = 0);
 
+    let scaled_width = WIDTH as i64 / scale;
+    let scaled_height = HEIGHT as i64 / scale;
+
     // Draw points on GUI
     for frame in data_buffer {
         for (x, y) in frame {
             if *x < current_x
-            || *x >= current_x + WIDTH as i64
+            || *x >= current_x + scaled_width
             || *y < current_y
-            || *y >= current_y + HEIGHT as i64 {
+            || *y >= current_y + scaled_height {
                 continue;
             }
 
-            let index = (*y - current_y) as usize * WIDTH + (*x - current_x) as usize;
-            let blue = window_buffer[index] as u8;
-            let blue = blue.saturating_add(64);
-            window_buffer[index] |= blue as u32;
+            let x = (x - current_x) * scale;
+            let y = (y - current_y) * scale;
+
+            for dy in 0..scale {
+                for dx in 0..scale {
+                    let index = ((y + dy) as usize) * WIDTH + ((x + dx) as usize);
+                    let blue = window_buffer[index] as u8;
+                    let blue = blue.saturating_add(64);
+                    window_buffer[index] |= blue as u32;
+                }
+            }
         }
     }
 
