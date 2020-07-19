@@ -11,8 +11,8 @@
 //! PCG random number generators
 
 use core::fmt;
+use core::mem::transmute;
 use rand_core::{RngCore, SeedableRng, Error, le, impls};
-#[cfg(feature="serde1")] use serde::{Serialize, Deserialize};
 
 // This is the default multiplier used by PCG for 64-bit state.
 const MULTIPLIER: u64 = 6364136223846793005;
@@ -45,8 +45,7 @@ impl Lcg64Xsh32 {
     /// Note that PCG specifies default values for both parameters:
     ///
     /// - `state = 0xcafef00dd15ea5e5`
-    /// - `stream = 0xa02bdbf7bb3c0a7`
-    // Note: stream is 1442695040888963407u64 >> 1
+    /// - `stream = 721347520444481703`
     pub fn new(state: u64, stream: u64) -> Self {
         // The increment must be odd, hence we discard one bit:
         let increment = (stream << 1) | 1;
@@ -116,12 +115,27 @@ impl RngCore for Lcg64Xsh32 {
 
     #[inline]
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        impls::fill_bytes_via_next(self, dest)
+        // specialisation of impls::fill_bytes_via_next; approx 40% faster
+        let mut left = dest;
+        while left.len() >= 4 {
+            let (l, r) = {left}.split_at_mut(4);
+            left = r;
+            let chunk: [u8; 4] = unsafe {
+                transmute(self.next_u32().to_le())
+            };
+            l.copy_from_slice(&chunk);
+        }
+        let n = left.len();
+        if n > 0 {
+            let chunk: [u8; 4] = unsafe {
+                transmute(self.next_u32().to_le())
+            };
+            left.copy_from_slice(&chunk[..n]);
+        }
     }
 
     #[inline]
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        self.fill_bytes(dest);
-        Ok(())
+        Ok(self.fill_bytes(dest))
     }
 }
