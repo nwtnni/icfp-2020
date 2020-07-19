@@ -92,6 +92,9 @@ fn main() -> anyhow::Result<()> {
             &mut window,
         )?;
 
+        let mut hijack = false;
+
+
         while vectors.is_empty() {
 
             let mut dirty = false;
@@ -141,6 +144,9 @@ fn main() -> anyhow::Result<()> {
             if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
                 speed += 1;
             }
+            if window.is_key_pressed(Key::V, KeyRepeat::Yes) {
+                println!("{}", &out_state);
+            }
 
             if window.is_key_pressed(Key::Key0, KeyRepeat::Yes) { filter = None; dirty = true; }
             if window.is_key_pressed(Key::Key1, KeyRepeat::Yes) { filter = Some(0); dirty = true; }
@@ -161,6 +167,10 @@ fn main() -> anyhow::Result<()> {
             if window.is_key_pressed(Key::Equal, KeyRepeat::Yes) {
                 scale = cmp::min(scale << 1, 32);
                 dirty = true;
+            }
+
+            if window.is_key_pressed(Key::B, KeyRepeat::Yes) {
+                hijack = true;
             }
 
             title_buffer.clear();
@@ -189,7 +199,17 @@ fn main() -> anyhow::Result<()> {
             }
         };
 
-        let _ = std::mem::replace(&mut state, out_state);
+        if hijack {
+            println!("bruh");
+            let mut hijack_lex = icfp::lex("ap ap cons 5 ap ap cons ap ap cons 2 ap ap cons 0 ap ap cons nil ap ap cons nil ap ap cons nil ap ap cons nil ap ap cons nil ap ap cons 25976 nil ap ap cons 9 ap ap cons nil nil");
+            let hijack_parse = icfp::parse::exp(&mut hijack_lex).expect(".");
+            let hijack_state = icfp::eval(&Rc::new(hijack_parse), &icfp::ast::Protocol::default(), &mut cache);
+            let _ = std::mem::replace(&mut state, hijack_state);
+            println!("{}", &state);
+        } else {
+
+            let _ = std::mem::replace(&mut state, out_state);
+        }
     }
 
     Ok(())
