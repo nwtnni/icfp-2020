@@ -48,6 +48,7 @@ fn main() -> anyhow::Result<()> {
     let mut current_y = 0i64;
     let mut speed = 1;
     let mut scale = 16;
+    let mut filter = None;
 
     let mut window_buffer = vec![0u32; WIDTH * HEIGHT];
     let mut window = Window::new(
@@ -81,6 +82,7 @@ fn main() -> anyhow::Result<()> {
             current_x,
             current_y,
             scale,
+            filter,
             &mut window,
         )?;
 
@@ -131,6 +133,18 @@ fn main() -> anyhow::Result<()> {
                 speed += 1;
             }
 
+            if window.is_key_pressed(Key::Key0, KeyRepeat::Yes) { filter = None; dirty = true; }
+            if window.is_key_pressed(Key::Key1, KeyRepeat::Yes) { filter = Some(0); dirty = true; }
+            if window.is_key_pressed(Key::Key2, KeyRepeat::Yes) { filter = Some(1); dirty = true; }
+            if window.is_key_pressed(Key::Key3, KeyRepeat::Yes) { filter = Some(2); dirty = true; }
+            if window.is_key_pressed(Key::Key4, KeyRepeat::Yes) { filter = Some(3); dirty = true; }
+            if window.is_key_pressed(Key::Key5, KeyRepeat::Yes) { filter = Some(4); dirty = true; }
+            if window.is_key_pressed(Key::Key6, KeyRepeat::Yes) { filter = Some(5); dirty = true; }
+
+            if window.is_key_pressed(Key::E, KeyRepeat::Yes) {
+                speed += 1;
+            }
+
             if window.is_key_pressed(Key::Minus, KeyRepeat::Yes) {
                 scale = cmp::max(scale >> 1, 1);
                 dirty = true;
@@ -158,6 +172,7 @@ fn main() -> anyhow::Result<()> {
                     current_x,
                     current_y,
                     scale,
+                    filter,
                     &mut window,
                 )?;
             } else {
@@ -181,6 +196,7 @@ fn redraw(
     current_x: i64,
     current_y: i64,
     scale: i64,
+    filter: Option<usize>,
     window: &mut Window,
 ) -> anyhow::Result<()> {
     // Clear window buffer
@@ -193,6 +209,14 @@ fn redraw(
 
     // Draw points on GUI
     for (color, frame) in data_buffer.iter().enumerate() {
+
+        // Filter specific frames
+        if let Some(filter) = filter {
+            if color != filter {
+                continue;
+            }
+        }
+
         for (x, y) in frame {
             if *x < current_x
             || *x >= current_x + scaled_width
