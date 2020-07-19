@@ -1,5 +1,7 @@
+use crate::eval::Value;
+use std::boxed::Box;
 
-pub fn modulate_list(value: crate::eval::Value) -> String {
+pub fn modulate_list(value: Value) -> String {
     let mut buffer = String::new();
     use crate::eval::Value::*;
     match value {
@@ -79,8 +81,38 @@ pub fn modulate_mut(value: i64, buffer: &mut String) {
     }
 }
 
+pub fn demodulate(value: &str) -> Value {
+    let (ret, _) = demodulate_list(value);
+    ret
+}
+
+pub fn demodulate_list(value: &str) -> (Value, &str) {
+    match &value[0..2] {
+        "00" => (Value::Nil, &value[2..]),
+        "11" => {
+            let (ret, rest) = demodulate_list(&value[2..]);
+            let (ret2, rest) = demodulate_list(&rest);
+            ( Value::Cons( Box::new(ret), Box::new(ret2)), &rest)
+            },
+        _ => demodulate_int(value),
+    }
+}
+
+fn demodulate_int(v: &str) -> (Value, &str) {
+    let positive = &v[0..2] == "01";
+    let index = v[2..]
+        .find('0')
+        .expect("Expected '0' in linear-encoded value");
+    let length = index * 4;
+    let mut final_val = i64::from_str_radix(&v[index+2..index+3+length], 2).unwrap();
+    if !positive {
+        final_val = -final_val;
+    }
+    (Value::Int(final_val), &v[index+3+length..])
+}
+
 /// https://message-from-space.readthedocs.io/en/latest/message14.html
-pub fn demodulate(value: &str) -> i64 {
+fn demodulate_number(value: &str) -> i64 {
     let positive = &value[0..2] == "01";
 
     // Note: +2 necessary since index is w.r.t. [2..]
@@ -95,6 +127,10 @@ pub fn demodulate(value: &str) -> i64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::eval::Value;
+    use crate::eval::eval;
+    use crate::parse::exp;
+    use crate::lex::lex;
 
     #[test]
     fn mod_0() {
@@ -121,13 +157,52 @@ mod tests {
         assert_eq!(super::modulate(-100), "1011001100100");
     }
 
+    // #[test]
+    // fn round_trip() {
+    //     let mut buffer = String::new();
+    //     for value in 0..1000 {
+    //         buffer.clear();
+    //         super::modulate_mut(value, &mut buffer);
+    //         assert_eq!(super::demodulate(&buffer), value);
+    //     }
+    // }
+
     #[test]
-    fn round_trip() {
-        let mut buffer = String::new();
-        for value in 0..1000 {
-            buffer.clear();
-            super::modulate_mut(value, &mut buffer);
-            assert_eq!(super::demodulate(&buffer), value);
-        }
+    fn demodulate_0() {
+        assert_eq!(super::demodulate_int("010"), (Value::Int(0), ""));
+    }
+
+    #[test]
+    fn demodulate_neg_100() {
+        assert_eq!(super::demodulate_int("1011001100100"), (Value::Int(-100), ""));
+    }
+
+    #[test]
+    fn demodulate_16() {
+        assert_eq!(super::demodulate_int("0111000010000"), (Value::Int(16), ""));
+    }
+
+    #[test]
+    fn demodulate_list() {
+        let long_list = eval(
+            dbg!(&exp(
+                &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
+                ).expect("bruh")));
+        assert_eq!(
+            super::demodulate_list("1101100001111101100010110110001100110110010000"),
+            (long_list, "")
+        )
+    }
+
+    #[test]
+    fn demodulate() {
+        let long_list = eval(
+            dbg!(&exp(
+                &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
+                ).expect("bruh")));
+        assert_eq!(
+            super::demodulate("1101100001111101100010110110001100110110010000"),
+            long_list
+        )
     }
 }

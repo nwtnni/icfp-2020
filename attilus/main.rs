@@ -2,6 +2,8 @@ use icfp::eval;
 use icfp::lex;
 use icfp::parse::exp;
 use icfp::transport::modulate_list;
+use icfp::transport::demodulate;
+use icfp::transport::demodulate_list;
 use icfp::Value;
 use std::vec::Vec;
 
@@ -31,13 +33,16 @@ fn main() -> anyhow::Result<()> {
     // draw_vec.push(1);
     // draw_vec.push(2);
     // let draw_args = build_vec(&mut draw_vec, Value::Nil);
-    let draw_args = eval(
-        dbg!(&exp(
-            &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil
-")
-            ).expect("bruh"))
-    );
-    print!("{}", modulate_list(draw_args));
+    // let draw_args = eval(
+    //     dbg!(&exp(
+    //         &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil ")
+    //         ).expect("bruh")));
+    // print!("{}", modulate_list(draw_args));
+
+    println!("{:?}", demodulate_list("110110000111011111100001001111110101000000"));
+    println!("{:?}", demodulate_list("110110000111011111100001001111110100110000"));
+    println!("");
+    println!("{:?}", demodulate("1101100001110111110101000110010111000"));
 
     Ok(())
 }
