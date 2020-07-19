@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::iter::Peekable;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::ast;
 use crate::Token;
@@ -11,41 +10,12 @@ pub fn interaction_protocol<I: IntoIterator<Item = Token>>(
     let mut tokens = tokens.into_iter();
     let mut assignments = HashMap::new();
     while let Some((var, exp)) = assign(&mut tokens) {
-        assignments.insert(var, Arc::new(exp));
+        assignments.insert(var, Rc::new(exp));
     }
     ast::Protocol {
-        assignments: Arc::new(assignments),
+        assignments,
         galaxy: galaxy(&mut tokens),
     }
-}
-
-pub fn test_suite<I: IntoIterator<Item = Token>>(
-    tokens: I,
-) -> ast::TestSuite {
-    let mut tokens = tokens.into_iter().peekable();
-    let mut equals = Vec::new();
-    while let Some(t) = test(&mut tokens) {
-        equals.push(t);
-    }
-    ast::TestSuite {
-        equals,
-    }
-}
-
-fn test<I: Iterator<Item = Token>>(
-    tokens: &mut Peekable<I>
-) -> Option<ast::Test> {
-    let mut assignments = HashMap::new();
-
-    while let Some(Token::Var(_)) = dbg!(tokens.peek()) {
-        let (var, exp) = assign(tokens).expect("Failed to parse expression for assignment");
-        assignments.insert(var, Arc::new(exp));
-    }
-
-    Some(dbg!(ast::Test {
-        assignments: Arc::new(assignments),
-        equal: equal(tokens)?,
-    }))
 }
 
 fn assign<I: Iterator<Item = Token>>(
@@ -77,49 +47,33 @@ fn galaxy<'arena, I: Iterator<Item = Token>>(tokens: &mut I) -> u64 {
     }
 }
 
-fn equal<I: Iterator<Item = Token>>(
-    tokens: &mut I,
-) -> Option<ast::Equal> {
-    let lhs = exp(tokens)?;
-
-    match tokens.next() {
-    | Some(Token::Assign) => (),
-    | _ => panic!("Invalid equality: expected '=' token"),
-    }
-
-    Some(ast::Equal {
-        lhs,
-        rhs: exp(tokens)?,
-    })
-}
-
 pub fn exp<I: Iterator<Item = Token>>(
     tokens: &mut I,
 ) -> Option<ast::Exp> {
     use Token::*;
     let exp = match tokens.next()? {
-    | Var(var) => ast::Exp::Var(var),
-    | Int(int) => ast::Exp::Int(int),
-    | Bool(bool) => ast::Exp::Bool(bool),
-    | Neg => ast::Exp::Neg,
-    | Inc => ast::Exp::Inc,
-    | Dec => ast::Exp::Dec,
-    | Add => ast::Exp::Add,
-    | Mul => ast::Exp::Mul,
-    | Div => ast::Exp::Div,
-    | Eq => ast::Exp::Eq,
-    | Lt => ast::Exp::Lt,
-    | S => ast::Exp::S,
-    | C => ast::Exp::C,
-    | B => ast::Exp::B,
-    | I => ast::Exp::I,
-    | Cons => ast::Exp::Cons,
-    | Car => ast::Exp::Car,
-    | Cdr => ast::Exp::Cdr,
-    | Nil => ast::Exp::Nil,
-    | IsNil => ast::Exp::IsNil,
-    | Galaxy => ast::Exp::Galaxy,
-    | App => ast::Exp::App(exp(tokens).map(Arc::new)?, exp(tokens).map(Arc::new)?),
+    | Var(var) => ast::Exp::Atom(ast::Atom::Var(var)),
+    | Int(int) => ast::Exp::Atom(ast::Atom::Int(int)),
+    | Bool(bool) => ast::Exp::Atom(ast::Atom::Bool(bool)),
+    | Neg => ast::Exp::Atom(ast::Atom::Neg),
+    | Inc => ast::Exp::Atom(ast::Atom::Inc),
+    | Dec => ast::Exp::Atom(ast::Atom::Dec),
+    | Add => ast::Exp::Atom(ast::Atom::Add),
+    | Mul => ast::Exp::Atom(ast::Atom::Mul),
+    | Div => ast::Exp::Atom(ast::Atom::Div),
+    | Eq => ast::Exp::Atom(ast::Atom::Eq),
+    | Lt => ast::Exp::Atom(ast::Atom::Lt),
+    | S => ast::Exp::Atom(ast::Atom::S),
+    | C => ast::Exp::Atom(ast::Atom::C),
+    | B => ast::Exp::Atom(ast::Atom::B),
+    | I => ast::Exp::Atom(ast::Atom::I),
+    | Cons => ast::Exp::Atom(ast::Atom::Cons),
+    | Car => ast::Exp::Atom(ast::Atom::Car),
+    | Cdr => ast::Exp::Atom(ast::Atom::Cdr),
+    | Nil => ast::Exp::Atom(ast::Atom::Nil),
+    | IsNil => ast::Exp::Atom(ast::Atom::IsNil),
+    | Galaxy => ast::Exp::Atom(ast::Atom::Galaxy),
+    | App => ast::Exp::App(exp(tokens).map(Rc::new)?, exp(tokens).map(Rc::new)?, Default::default()),
     | _ => panic!("Invalid expression"),
     };
     Some(exp)
