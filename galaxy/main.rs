@@ -42,6 +42,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut title_buffer = String::new();
     let mut data_buffer = Vec::new();
+    let mut debounce = time::Instant::now();
 
     let mut current_x = 0i64;
     let mut current_y = 0i64;
@@ -87,11 +88,15 @@ fn main() -> anyhow::Result<()> {
 
             let mut dirty = false;
 
-            if window.get_mouse_down(MouseButton::Left) {
-                if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
-                    break (x as i64 / scale + current_x, y as i64 / scale + current_y);
+            if debounce.elapsed() > time::Duration::from_millis(250) {
+                if window.get_mouse_down(MouseButton::Left) {
+                    if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
+                        debounce = time::Instant::now();
+                        break (x as i64 / scale + current_x, y as i64 / scale + current_y);
+                    }
                 }
             }
+
             if window.is_key_pressed(Key::Escape, KeyRepeat::Yes) {
                 return Ok(())
             }
@@ -187,7 +192,7 @@ fn redraw(
     let scaled_height = HEIGHT as i64 / scale;
 
     // Draw points on GUI
-    for frame in data_buffer {
+    for (color, frame) in data_buffer.iter().enumerate() {
         for (x, y) in frame {
             if *x < current_x
             || *x >= current_x + scaled_width
@@ -202,9 +207,9 @@ fn redraw(
             for dy in 0..scale {
                 for dx in 0..scale {
                     let index = ((y + dy) as usize) * WIDTH + ((x + dx) as usize);
-                    let blue = window_buffer[index] as u8;
-                    let blue = blue.saturating_add(64);
-                    window_buffer[index] |= blue as u32;
+                    let shift = (color % 3) * 8;
+                    let apply = (((window_buffer[index] >> shift) as u8).saturating_add(127) as u32) << shift;
+                    window_buffer[index] |= apply;
                 }
             }
         }
