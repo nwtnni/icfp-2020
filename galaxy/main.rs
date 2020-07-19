@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::time;
 
 use minifb::Key;
+use minifb::KeyRepeat;
 use minifb::MouseButton;
 use minifb::MouseMode;
 use minifb::Scale;
@@ -55,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     window.limit_update_rate(Some(time::Duration::from_micros(16600)));
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
+    while window.is_open() {
 
         let in_state = std::mem::replace(&mut state, Rc::clone(&nil));
         let in_vector = std::mem::replace(&mut vector, Rc::clone(&nil));
@@ -95,6 +96,9 @@ fn main() -> anyhow::Result<()> {
                 if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
                     break (x as i64, y as i64);
                 }
+            }
+            if window.is_key_pressed(Key::Escape, KeyRepeat::Yes) {
+                return Ok(())
             }
             window.update();
         };
