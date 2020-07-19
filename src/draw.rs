@@ -1,11 +1,27 @@
+use std::io;
+use std::io::Write;
+use std::time;
+use std::thread;
+
 use crate::eval::Value;
-use std::io::{self, Write};
 
 const CSI: &str = "\x1b[";
-const CLEAR_SCREEN: &str = "\x1b[3J";
+const CLEAR_SCREEN: &str = "\x1b[2J";
 
 fn hide_cursor() {
     print!("{}?25l", CSI);
+}
+
+fn show_cursor() {
+    print!("{}?25h", CSI);
+}
+
+fn alt_buffer() {
+    print!("{}?1049h", CSI);
+}
+
+fn reg_buffer() {
+    print!("{}?1049l", CSI);
 }
 
 fn clear() {
@@ -30,7 +46,6 @@ fn draw_point(v: &Value) {
     | Value::Cons(v1, v2) => draw_at(extract_int(v1), extract_int(v2)),
     | _ => panic!("Not a valid pair")
     }
-
 }
 
 fn _draw(v: &Value) {
@@ -45,7 +60,6 @@ fn _draw(v: &Value) {
 }
 
 pub fn draw(v: &Value) {
-    hide_cursor();
     clear();
     _draw(v);
     io::stdout().flush().unwrap();
@@ -55,6 +69,7 @@ fn _multidraw(v: &Value) {
     match v {
     | Value::Cons(image, rest) => {
         _draw(image);
+        thread::sleep(time::Duration::from_secs(1));
         _multidraw(rest);
     },
     | Value::Nil => (),
@@ -63,8 +78,11 @@ fn _multidraw(v: &Value) {
 }
 
 pub fn multidraw(v: &Value) {
+    alt_buffer();
     hide_cursor();
     clear();
     _multidraw(v);
+    show_cursor();
+    reg_buffer();
     io::stdout().flush().unwrap();
 }

@@ -16,14 +16,14 @@ fn main() -> anyhow::Result<()> {
     let client = icfp::Client::new()?;
     // let temp = build_vec(vec![(1, 2), (3, 4)]);
 
-    dbg!(icfp::interact(
+    icfp::interact(
         &client,
         icfp::Value::Nil,
         icfp::Value::Cons(
             Box::new(icfp::Value::Int(3)),
             Box::new(icfp::Value::Int(4)),
         ),
-    ));
+    );
 
     // let mut args = env::args().skip(1);
 
