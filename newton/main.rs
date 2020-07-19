@@ -9,17 +9,39 @@
 //     Protocol,
 // }
 
+fn build_vec(mut vec: Vec<(i64, i64)>, acc: icfp::Value) -> icfp::Value {
+    if vec.is_empty() {
+        return acc
+    };
+    let (x, y) = vec.pop().expect("Empty vec?");
+    build_vec(
+        vec,
+        icfp::Value::Cons(
+            Box::new(
+                icfp::Value::Cons(
+                    Box::new(icfp::Value::Int(x)),
+                    Box::new(icfp::Value::Int(y)),
+                )
+            ),
+            Box::new(acc)
+        )
+    )
+}
+
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let client = icfp::Client::new()?;
+    let temp = build_vec(vec![(5, 5)], icfp::Value::Nil);
 
-    let mut tokens = icfp::lex("ap ap cons 0 nil");
-    let tree = icfp::parse::exp(&mut tokens).unwrap();
-    let list = dbg!(icfp::eval(&tree));
-    let modulated = icfp::transport::modulate_list(list);
 
-    dbg!(client.send_alien_message(modulated)?);
+    dbg!(temp);
+
+    // dbg!(icfp::interact(
+    //     &client,
+    //     icfp::Value::Nil,
+    //     temp.clone(),
+    // ));
 
     // let mut args = env::args().skip(1);
 

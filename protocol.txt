@@ -1,1 +1,1 @@
-data/galaxy.txt
+data/stateless.txt

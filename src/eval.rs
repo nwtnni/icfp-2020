@@ -56,11 +56,12 @@ impl fmt::Debug for Value {
         use Value::*;
         match self {
         | Closure(_) => panic!("Cannot clone closure"),
-        | Int(n) => write!(f, "Int: {}", n),
-        | Bool(n) => write!(f, "Bool: {}", n),
-        | Cons(n1, n2) => write!(f, "Cons: ( {:?}, {:?} )", n1, n2),
-        | Var(n) => write!(f, "Var: {}", n),
-        | Nil => write!(f, "Nil"),
+        | Int(n) => write!(f, "{}", n),
+        | Bool(n) => write!(f, "{}", n),
+        | Cons(n1, n2) if **n2 == Value::Nil => write!(f, "({:?})", n1),
+        | Cons(n1, n2) => write!(f, "({:?}, {:?})", n1, n2),
+        | Var(n) => write!(f, ":{}", n),
+        | Nil => write!(f, "()"),
         }
     }
 }
@@ -111,6 +112,9 @@ fn step(
     if let Value::Cons(state, tail) = *tail {
     if let Value::Cons(data, tail) = *tail {
     if let Value::Nil = *tail {
+        log::debug!("Flag: {:?}", &flag);
+        log::debug!("State: {:?}", &state);
+        log::debug!("Data: {:?}", &data);
         if let Value::Int(0) = *flag {
             draw::multidraw(&data);
             return *state;
@@ -130,6 +134,8 @@ fn step(
 pub fn eval(expr: &ast::Exp) -> Value {
 
     use ast::Exp::*;
+
+    log::debug!("Evaluating: {:?}", expr);
 
     match expr {
     | Nil => Value::Nil,
