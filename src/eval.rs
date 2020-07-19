@@ -307,6 +307,6 @@ fn closure(value: Value) -> Box<dyn Fn(&Arc<ast::Exp>) -> Value> {
         })
     }
     | Value::Bool(false) => Box::new(|_| Value::Closure(Box::new(|rhs| eval(&rhs)))),
-    | _ => panic!("Expected closure or bool")
+    | value => panic!(format!("Expected closure or bool but got: {:?}", value)),
     }
 }
