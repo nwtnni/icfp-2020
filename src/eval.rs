@@ -78,9 +78,12 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     // a
     // ```
     let (f, x) = match &**e {
+    | Exp::Atom(Atom::Var(var)) => return Rc::clone(&p[*var]),
     | Exp::Atom(atom) => return a.get(*atom),
     | Exp::App(f, x, _) => (f, x),
     };
+
+    let f = eval(f, p, a);
 
     // Evaluate single-argument functions:
     //
@@ -89,7 +92,7 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     //  /   \
     // f     x
     // ```
-    let (f, x, y) = match &**f {
+    let (f, x, y) = match &*f {
     | Exp::Atom(Atom::Neg) => {
         let x = -eval(x, p, a).to_int();
         return a.get(Atom::Int(x));
@@ -124,13 +127,12 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
         Rc::clone(x),
         a.get(Atom::Bool(false)),
     ),
-    | Exp::Atom(atom) => panic!(format!(
-        "Expected `neg`, `i`, `nil`, `isnil`, `car`, or `cdr`, but found: {:?}",
-        atom
-    )),
+    | Exp::Atom(_) => return Rc::clone(e),
     // Note: application is on the left, so we swap arguments
     | Exp::App(f, y, _) => (f, y, x),
     };
+
+    let f = eval(f, p, a);
 
     // Evaluate two-argument functions:
     //
@@ -141,7 +143,7 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     //  /   \
     // f    x
     // ```
-    let (f, x, y, z) = match &**f {
+    let (f, x, y, z) = match &*f {
     | Exp::Atom(Atom::Bool(true)) => return Rc::clone(x),
     | Exp::Atom(Atom::Bool(false)) => return Rc::clone(y),
     | Exp::Atom(Atom::Add) => {
@@ -180,12 +182,11 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
         cons.set_cached(Rc::clone(&cons));
         return cons;
     }
-    | Exp::Atom(atom) => panic!(format!(
-        "Expected `t`, `f`, `add`, `mul`, `div`, `lt`, `eq`, or `cons`, but found: {:?}",
-        atom,
-    )),
+    | Exp::Atom(_) => return Rc::clone(e),
     | Exp::App(f, z, _) => (f, z, x, y),
     };
+
+    let f = eval(f, p, a);
 
     // Evaluate three-argument functions:
     //
@@ -198,7 +199,7 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     //  /   \
     // f     x
     // ```
-    match &**f {
+    match &*f {
     | Exp::Atom(Atom::S) => Exp::app(
         Exp::app(Rc::clone(x), Rc::clone(z)),
         Exp::app(Rc::clone(y), Rc::clone(z)),
@@ -215,9 +216,6 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
         Exp::app(Rc::clone(z), Rc::clone(x)),
         Rc::clone(y),
     ),
-    | other => panic!(format!(
-        "Expected `s`, `c`, `b`, or `cons`, but found: {:?}",
-        other
-    )),
+    | _ => Rc::clone(e),
     }
 }

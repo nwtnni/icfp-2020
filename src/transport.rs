@@ -115,20 +115,6 @@ fn demodulate_int<'v>(v: &'v str, cache: &mut AtomCache) -> (Rc<Exp>, &'v str) {
     (cache.get(Atom::Int(final_val)), &v[index+3+length..])
 }
 
-/// https://message-from-space.readthedocs.io/en/latest/message14.html
-fn demodulate_number(value: &str) -> i64 {
-    let positive = &value[0..2] == "01";
-
-    // Note: +2 necessary since index is w.r.t. [2..]
-    let index = 2 + value[2..]
-        .find('0')
-        .expect("Expected '0' in linear-encoded value");
-
-    i64::from_str_radix(&value[index..], 2)
-        .map(|value| if positive { value } else { -value })
-        .expect("Expected valid binary string in linear-encoded value")
-}
-
 #[cfg(test)]
 mod tests {
 

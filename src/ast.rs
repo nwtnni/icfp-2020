@@ -1,7 +1,8 @@
-use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 use std::ops;
+use std::rc::Rc;
 
 /// Interaction protocol.
 #[derive(Clone, Debug, Default)]
@@ -31,6 +32,13 @@ impl Exp {
         Rc::new(Exp::App(lhs.into(), rhs.into(), Default::default()))
     }
 
+    pub fn cons<L, R>(lhs: L, rhs: R) -> Rc<Exp>
+    where L: Into<Rc<Exp>>,
+          R: Into<Rc<Exp>>,
+    {
+        Self::app(Self::app(Exp::Atom(Atom::Cons), lhs), rhs)
+    }
+
     pub fn get_cached(&self) -> Option<Rc<Exp>> {
         match self {
         | Exp::Atom(_) => None,
@@ -48,7 +56,7 @@ impl Exp {
     pub fn to_int(&self) -> i64 {
         match self {
         | Exp::Atom(Atom::Int(int)) => *int,
-        | other => panic!(format!("Expected `<INT>`, but found: {:?}", other)),
+        | other => panic!(format!("Expected `int`, but found: {}", other)),
         }
     }
 
@@ -63,18 +71,18 @@ impl Exp {
     /// ```
     pub fn to_cons(&self) -> (&Rc<Exp>, &Rc<Exp>) {
         let (cons_h, t) = match self {
-        | Exp::Atom(atom) => panic!(format!("Expected `ap ap cons <CAR> <CDR>`, but found: {:?}", atom)),
+        | Exp::Atom(atom) => panic!(format!("Expected `ap ap cons <CAR> <CDR>`, but found: {}", atom)),
         | Exp::App(cons_h, t, _) => (cons_h, t),
         };
 
         let (cons, h) = match &**cons_h {
-        | Exp::Atom(atom) => panic!(format!("Expected `ap cons <CAR>`, but found: {:?}", atom)),
+        | Exp::Atom(atom) => panic!(format!("Expected `ap cons <CAR>`, but found: {}", atom)),
         | Exp::App(cons, h, _) => (cons, h),
         };
 
         match &**cons {
         | Exp::Atom(Atom::Cons) => (h, t),
-        | other => panic!(format!("Expected `cons`, but found: {:?}", other)),
+        | other => panic!(format!("Expected `cons`, but found: {}", other)),
         }
     }
 }
@@ -139,4 +147,47 @@ pub enum Atom {
     IsNil,
 
     Galaxy,
+}
+
+impl From<Atom> for Exp {
+    fn from(atom: Atom) -> Self {
+        Exp::Atom(atom)
+    }
+}
+
+impl fmt::Display for Exp {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+        | Exp::Atom(atom) => write!(fmt, "{}", atom),
+        | Exp::App(f, x, _) => write!(fmt, "ap {} {}", f, x),
+        }
+    }
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+        | Atom::Nil => write!(fmt, "nil"),
+        | Atom::Int(int) => write!(fmt, "{}", int),
+        | Atom::Var(var) => write!(fmt, "{}", var),
+        | Atom::Bool(bool) => write!(fmt, "{}", bool),
+        | Atom::Neg => write!(fmt, "neg"),
+        | Atom::Inc => write!(fmt, "inc"),
+        | Atom::Dec => write!(fmt, "dec"),
+        | Atom::Add => write!(fmt, "add"),
+        | Atom::Mul => write!(fmt, "mul"),
+        | Atom::Div => write!(fmt, "div"),
+        | Atom::Eq => write!(fmt, "eq"),
+        | Atom::Lt => write!(fmt, "lt"),
+        | Atom::S => write!(fmt, "s"),
+        | Atom::I => write!(fmt, "i"),
+        | Atom::B => write!(fmt, "b"),
+        | Atom::C => write!(fmt, "c"),
+        | Atom::Cons => write!(fmt, "cons"),
+        | Atom::Car => write!(fmt, "car"),
+        | Atom::Cdr => write!(fmt, "cdr"),
+        | Atom::IsNil => write!(fmt, "isNil"),
+        | Atom::Galaxy => write!(fmt, "galaxy"),
+        }
+    }
 }
