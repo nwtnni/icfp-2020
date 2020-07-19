@@ -55,11 +55,13 @@ impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Value::*;
         match self {
-        | Closure(_) => panic!("Cannot clone closure"),
+        | Closure(_) => write!(f, "<closure>"),
         | Int(n) => write!(f, "{}", n),
         | Bool(n) => write!(f, "{}", n),
-        | Cons(n1, n2) if **n2 == Value::Nil => write!(f, "({:?})", n1),
-        | Cons(n1, n2) => write!(f, "({:?}, {:?})", n1, n2),
+        | Cons(n1, n2) => f.debug_tuple("")
+            .field(n1)
+            .field(n2)
+            .finish(),
         | Var(n) => write!(f, ":{}", n),
         | Nil => write!(f, "()"),
         }
@@ -142,7 +144,7 @@ pub fn eval(expr: &ast::Exp) -> Value {
     | Int(n) => Value::Int(*n),
     | Var(v) => eval(&PROTOCOL[*v]),
     | Bool(b) => Value::Bool(*b),
-    | App(f, v) => closure(eval(&f))(&v),
+    | App(f, v) => dbg!(closure(eval(&f))(&v)),
     | Neg => Value::Closure(Box::new(|e| Value::Int(-int(eval(e))))),
     | Inc => Value::Closure(Box::new(|e| Value::Int(int(eval(e)) + 1))),
     | Dec => Value::Closure(Box::new(|e| Value::Int(int(eval(e)) - 1))),
