@@ -4,6 +4,23 @@ use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
+#[macro_export]
+macro_rules! list {
+    () => {
+        std::rc::Rc::new(crate::ast::Exp::Atom(crate::ast::Atom::Nil))
+    };
+    ($head:expr $(, $tail:expr)* $(,)?) => {
+        crate::ast::Exp::cons($head, list!($($tail),*))
+    }
+}
+
+#[macro_export]
+macro_rules! pair {
+    ($lhs:expr, $rhs:expr) => {
+        crate::ast::Exp::cons($lhs, $rhs)
+    }
+}
+
 /// Interaction protocol.
 #[derive(Clone, Debug, Default)]
 pub struct Protocol {
@@ -60,7 +77,14 @@ impl Exp {
         }
     }
 
-    /// Asserts that `self` is in the following tree shape, and extracts sub-trees `h`, and `t`:
+    pub fn to_cons(&self) -> (&Rc<Exp>, &Rc<Exp>) {
+        match self.to_cons_opt() {
+        | Some(cons) => cons,
+        | None => panic!(format!("Expected `cons` but found: {}", self)),
+        }
+    }
+
+    /// Extracts sub-trees `h`, and `t`:
     ///
     /// ```text
     ///      app
@@ -69,8 +93,9 @@ impl Exp {
     ///   /   \
     /// cons   h
     /// ```
-    pub fn to_cons(&self) -> (&Rc<Exp>, &Rc<Exp>) {
+    pub fn to_cons_opt(&self) -> Option<(&Rc<Exp>, &Rc<Exp>)> {
         let (cons_h, t) = match self {
+        | Exp::Atom(Atom::Nil) => return None,
         | Exp::Atom(atom) => panic!(format!("Expected `ap ap cons <CAR> <CDR>`, but found: {}", atom)),
         | Exp::App(cons_h, t, _) => (cons_h, t),
         };
@@ -81,7 +106,7 @@ impl Exp {
         };
 
         match &**cons {
-        | Exp::Atom(Atom::Cons) => (h, t),
+        | Exp::Atom(Atom::Cons) => Some((h, t)),
         | other => panic!(format!("Expected `cons`, but found: {}", other)),
         }
     }

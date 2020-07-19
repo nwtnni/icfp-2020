@@ -1,7 +1,10 @@
-mod api;
+#[macro_use]
 pub mod ast;
+
+mod api;
 pub mod draw;
 mod eval;
+pub mod game;
 mod lex;
 pub mod parse;
 mod token;
