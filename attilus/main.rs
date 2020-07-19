@@ -1,19 +1,23 @@
+use icfp::ast;
+use icfp::eval;
+use icfp::lex;
+use icfp::parse::exp;
+use icfp::transport::modulate_list;
 use icfp::Value;
 use std::vec::Vec;
+use std::rc::Rc;
 
-fn build_vec(vec: &mut Vec<(i64, i64)>, acc: Value) -> Value {
+fn build_vec(vec: &mut Vec<i64>, acc: Value) -> Value {
     if vec.is_empty() {
         return acc
     };
-    let (x, y) = vec.pop().expect("Empty vec?");
+    // let (x, y) = vec.pop().expect("Empty vec?");
+    let x = vec.pop().expect("Empty vec?");
     build_vec(
         vec,
         Value::Cons(
             Box::new(
-                Value::Cons(
-                    Box::new(Value::Int(x)),
-                    Box::new(Value::Int(y)),
-                )
+                Value::Int(x)
             ),
             Box::new(acc)
         )
@@ -24,14 +28,17 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     // let _ = icfp::Client::new()?;
-    let mut draw_vec: Vec<(i64, i64)> = Vec::new();
-    draw_vec.push((3, 2));
-    draw_vec.push((3, 3));
-    draw_vec.push((7, 1));
-    draw_vec.push((7, 3));
-    let draw_args = build_vec(&mut draw_vec, Value::Nil);
-
-    icfp::draw(&draw_args);
+    // let mut draw_vec = Vec::new();
+    // draw_vec.push(1);
+    // draw_vec.push(2);
+    // let draw_args = build_vec(&mut draw_vec, Value::Nil);
+    let draw_args = eval(
+        dbg!(&exp(
+            &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil
+")
+            ).expect("bruh")),
+        &Rc::new(ast::Protocol::default()));
+    print!("{}", modulate_list(draw_args));
 
     Ok(())
 }

@@ -1,3 +1,27 @@
+
+pub fn modulate_list(value: crate::eval::Value) -> String {
+    let mut buffer = String::new();
+    use crate::eval::Value::*;
+    match value {
+        Nil => {
+            buffer.push_str("00");
+            buffer
+        },
+        Cons(v1, v2) => {
+            buffer.push_str("11");
+            buffer.push_str(modulate_list(*v1).as_str());
+            buffer.push_str(modulate_list(*v2).as_str());
+            buffer
+        },
+        Int(i) => {
+            buffer.push_str(modulate(i).as_str());
+            buffer
+        }
+        _ => panic!("Cannot modulate things that are not lists or ints")
+    }
+}
+
+
 pub fn modulate(value: i64) -> String {
     let mut buffer = String::new();
     modulate_mut(value, &mut buffer);

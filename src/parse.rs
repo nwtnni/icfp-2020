@@ -93,7 +93,7 @@ fn equal<I: Iterator<Item = Token>>(
     })
 }
 
-fn exp<I: Iterator<Item = Token>>(
+pub fn exp<I: Iterator<Item = Token>>(
     tokens: &mut I,
 ) -> Option<ast::Exp> {
     use Token::*;
