@@ -41,6 +41,10 @@ path = "submit/main.rs"
 name = "stateless"
 path = "stateless/main.rs"
 
+[[bin]]
+name = "galaxy"
+path = "galaxy/main.rs"
+
 [dependencies]
 anyhow = "1.0"
 env_logger = "0.7"

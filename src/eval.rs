@@ -5,7 +5,6 @@ use crate::ast::Atom;
 use crate::ast::AtomCache;
 use crate::ast::Exp;
 use crate::ast::Protocol;
-use crate::draw;
 
 pub fn interact(
     c: &Client,
@@ -14,7 +13,7 @@ pub fn interact(
 
     s: Rc<Exp>,
     v: Rc<Exp>,
-) -> Rc<Exp> {
+) -> (Rc<Exp>, Rc<Exp>) {
     let e = eval(
         &Exp::app(Exp::app(Rc::clone(&p[p.galaxy]), s), v),
         p,
@@ -29,7 +28,7 @@ fn _interact(
     p: &Protocol,
     a: &mut AtomCache,
     e: Rc<Exp>,
-) -> Rc<Exp> {
+) -> (Rc<Exp>, Rc<Exp>) {
     let (flag, tail) = e.to_cons();
     let (state, tail) = tail.to_cons();
     let (data, tail) = tail.to_cons();
@@ -37,8 +36,7 @@ fn _interact(
     assert_eq!(**tail, Exp::Atom(Atom::Nil));
 
     if let Exp::Atom(Atom::Int(0)) = &**flag {
-        draw::multidraw(&data);
-        Rc::clone(state)
+        (Rc::clone(state), Rc::clone(data))
     } else {
         let new_data = c
             .send_alien_message(a, data)

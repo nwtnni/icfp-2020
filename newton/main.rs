@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         let in_state = std::mem::replace(&mut state, Rc::clone(&nil));
         let in_vector = read(&mut input, &mut stdin);
 
-        let out_state = icfp::interact(
+        let (out_state, out_data) = icfp::interact(
             &client,
             &protocol,
             &mut cache,
@@ -42,6 +42,7 @@ fn main() -> anyhow::Result<()> {
             in_vector,
         );
 
+        icfp::draw::multidraw(&out_data);
         let _ = std::mem::replace(&mut state, out_state);
 
         thread::sleep(time::Duration::from_secs(1));

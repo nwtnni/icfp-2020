@@ -83,3 +83,30 @@ pub fn multidraw(exp: &Exp) {
     reg_buffer();
     io::stdout().flush().unwrap();
 }
+
+fn draw_point_exp(exp: &Exp, frame: &mut Vec<(i64, i64)>) {
+    let (x, y) = exp.to_cons();
+    frame.push((extract_int(x), extract_int(y)));
+}
+
+fn draw_exp(exp: &Exp, frame: &mut Vec<(i64, i64)>) {
+    if let Exp::Atom(Atom::Nil) = exp {
+        return;
+    }
+
+    let (point, rest) = exp.to_cons();
+    draw_point_exp(point, frame);
+    draw_exp(rest, frame);
+}
+
+pub fn multidraw_exp(exp: &Exp, buffer: &mut Vec<Vec<(i64, i64)>>) {
+    if let Exp::Atom(Atom::Nil) = exp {
+        return;
+    }
+
+    let (points, rest) = exp.to_cons();
+    let mut frame = Vec::new();
+    draw_exp(points, &mut frame);
+    buffer.push(frame);
+    multidraw_exp(rest, buffer);
+}
