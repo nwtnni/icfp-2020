@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::ast;
 use crate::Token;
@@ -11,10 +11,10 @@ pub fn interaction_protocol<I: IntoIterator<Item = Token>>(
     let mut tokens = tokens.into_iter();
     let mut assignments = HashMap::new();
     while let Some((var, exp)) = assign(&mut tokens) {
-        assignments.insert(var, Rc::new(exp));
+        assignments.insert(var, Arc::new(exp));
     }
     ast::Protocol {
-        assignments: Rc::new(assignments),
+        assignments: Arc::new(assignments),
         galaxy: galaxy(&mut tokens),
     }
 }
@@ -36,11 +36,16 @@ fn test<I: Iterator<Item = Token>>(
     tokens: &mut Peekable<I>
 ) -> Option<ast::Test> {
     let mut assignments = HashMap::new();
+
     while let Some(Token::Var(_)) = dbg!(tokens.peek()) {
         let (var, exp) = assign(tokens).expect("Failed to parse expression for assignment");
-        assignments.insert(var, Rc::new(exp));
+        assignments.insert(var, Arc::new(exp));
     }
-    Some(dbg!(ast::Test{assignments: Rc::new(assignments), equal: equal(tokens)?}))
+
+    Some(dbg!(ast::Test {
+        assignments: Arc::new(assignments),
+        equal: equal(tokens)?,
+    }))
 }
 
 fn assign<I: Iterator<Item = Token>>(
@@ -114,7 +119,7 @@ fn exp<I: Iterator<Item = Token>>(
     | Nil => ast::Exp::Nil,
     | IsNil => ast::Exp::IsNil,
     | Galaxy => ast::Exp::Galaxy,
-    | App => ast::Exp::App(exp(tokens).map(Rc::new)?, exp(tokens).map(Rc::new)?),
+    | App => ast::Exp::App(exp(tokens).map(Arc::new)?, exp(tokens).map(Arc::new)?),
     | _ => panic!("Invalid expression"),
     };
     Some(exp)

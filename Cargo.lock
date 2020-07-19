@@ -319,6 +319,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
+ "once_cell",
  "reqwest",
 ]
 

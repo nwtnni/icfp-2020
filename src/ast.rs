@@ -1,16 +1,16 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::collections::HashMap;
 use std::ops;
 
 /// Interaction protocol.
 #[derive(Clone, Debug, Default)]
 pub struct Protocol {
-    pub assignments: Rc<HashMap<u64, Rc<Exp>>>,
+    pub assignments: Arc<HashMap<u64, Arc<Exp>>>,
     pub galaxy: u64,
 }
 
 impl ops::Index<u64> for Protocol {
-    type Output = Rc<Exp>;
+    type Output = Arc<Exp>;
     fn index(&self, var: u64) -> &Self::Output {
         &self.assignments[&var]
     }
@@ -24,7 +24,7 @@ pub struct TestSuite {
 
 #[derive(Clone, Debug)]
 pub struct Test {
-    pub assignments: Rc<HashMap<u64, Rc<Exp>>>,
+    pub assignments: Arc<HashMap<u64, Arc<Exp>>>,
     pub equal: Equal
 }
 
@@ -52,7 +52,7 @@ pub enum Exp {
     Eq,
     Lt,
 
-    App(Rc<Exp>, Rc<Exp>),
+    App(Arc<Exp>, Arc<Exp>),
 
     S,
     I,

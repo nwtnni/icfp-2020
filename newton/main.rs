@@ -1,6 +1,5 @@
 use std::env;
 use std::fs;
-use std::rc::Rc;
 
 use anyhow::anyhow;
 
@@ -32,22 +31,16 @@ fn main() -> anyhow::Result<()> {
 
     match mode {
         Mode::Protocol => {
-            let protocol = Rc::new(icfp::parse::interaction_protocol(tokens));
-            let temp = &protocol[1043];
-            dbg!(icfp::eval(temp, &protocol));
+            let entry = icfp::PROTOCOL.galaxy;
+            let expr = &icfp::PROTOCOL[entry];
+            dbg!(expr);
         }
         Mode::Test => {
             let test = icfp::parse::test_suite(tokens);
             dbg!(&test);
             for t in test.equals {
-                let protocol = Rc::new(
-                    icfp::ast::Protocol{
-                        assignments: t.assignments,
-                        galaxy: 0,
-                    }
-                );
-                let lhs = dbg!(icfp::eval(&t.equal.lhs, &protocol));
-                let rhs = dbg!(icfp::eval(&t.equal.rhs, &protocol));
+                let lhs = dbg!(icfp::eval(&t.equal.lhs));
+                let rhs = dbg!(icfp::eval(&t.equal.rhs));
                 assert_eq!(lhs, rhs)
             }
         }
