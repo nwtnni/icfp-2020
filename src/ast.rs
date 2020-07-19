@@ -31,10 +31,10 @@ impl Exp {
         Rc::new(Exp::App(lhs.into(), rhs.into(), Default::default()))
     }
 
-    pub fn get_cached(&self) -> Option<&Rc<Exp>> {
+    pub fn get_cached(&self) -> Option<Rc<Exp>> {
         match self {
         | Exp::Atom(_) => None,
-        | Exp::App(_, _, cache) => cache.borrow().as_ref(),
+        | Exp::App(_, _, cache) => cache.borrow().clone(),
         }
     }
 
@@ -52,19 +52,28 @@ impl Exp {
         }
     }
 
+    /// Asserts that `self` is in the following tree shape, and extracts sub-trees `h`, and `t`:
+    ///
+    /// ```text
+    ///      app
+    ///     /   \
+    ///    app   t
+    ///   /   \
+    /// cons   h
+    /// ```
     pub fn to_cons(&self) -> (&Rc<Exp>, &Rc<Exp>) {
-        let (cons_car, cdr) = match self {
+        let (cons_h, t) = match self {
         | Exp::Atom(atom) => panic!(format!("Expected `ap ap cons <CAR> <CDR>`, but found: {:?}", atom)),
-        | Exp::App(cons_car, cdr, _) => (cons_car, cdr),
+        | Exp::App(cons_h, t, _) => (cons_h, t),
         };
 
-        let (cons, car) = match &**cons_car {
+        let (cons, h) = match &**cons_h {
         | Exp::Atom(atom) => panic!(format!("Expected `ap cons <CAR>`, but found: {:?}", atom)),
-        | Exp::App(cons, car, _) => (cons, car),
+        | Exp::App(cons, h, _) => (cons, h),
         };
 
         match &**cons {
-        | Exp::Atom(Atom::Cons) => (car, cdr),
+        | Exp::Atom(Atom::Cons) => (h, t),
         | other => panic!(format!("Expected `cons`, but found: {:?}", other)),
         }
     }
@@ -74,7 +83,8 @@ impl PartialEq for Exp {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
         | (Exp::Atom(lhs), Exp::Atom(rhs)) => lhs == rhs,
-        | (Exp::App(llhs, lrhs, _), Exp::App(rlhs, rrhs, _)) => llhs == rlhs && rlhs == rrhs,
+        | (Exp::App(llhs, lrhs, _), Exp::App(rlhs, rrhs, _)) => llhs == rlhs && lrhs == rrhs,
+        | _ => false,
         }
     }
 }

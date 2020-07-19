@@ -1,13 +1,55 @@
 use std::rc::Rc;
 
+use crate::Client;
 use crate::ast::Atom;
 use crate::ast::AtomCache;
 use crate::ast::Exp;
 use crate::ast::Protocol;
+use crate::draw;
 
-fn eval(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
+pub fn interact(
+    c: &Client,
+    p: &Protocol,
+    a: &mut AtomCache,
+
+    s: Rc<Exp>,
+    v: Rc<Exp>,
+) -> Rc<Exp> {
+    let e = eval(
+        &Exp::app(Exp::app(Rc::clone(&p[p.galaxy]), s), v),
+        p,
+        a,
+    );
+
+    _interact(c, p, a, e)
+}
+
+fn _interact(
+    c: &Client,
+    p: &Protocol,
+    a: &mut AtomCache,
+    e: Rc<Exp>,
+) -> Rc<Exp> {
+    let (flag, tail) = e.to_cons();
+    let (state, tail) = tail.to_cons();
+    let (data, tail) = tail.to_cons();
+
+    assert_eq!(**tail, Exp::Atom(Atom::Nil));
+
+    if let Exp::Atom(Atom::Int(0)) = &**flag {
+        draw::multidraw(&data);
+        Rc::clone(state)
+    } else {
+        let new_data = c
+            .send_alien_message(a, data)
+            .expect("Failed to send message to server");
+        interact(c, p, a, Rc::clone(state), new_data)
+    }
+}
+
+pub fn eval(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     if let Some(cached) = e.get_cached() {
-        return Rc::clone(cached);
+        return cached;
     }
 
     let mut prev = Rc::clone(&e);
@@ -27,7 +69,7 @@ fn eval(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
 
 fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     if let Some(cached) = e.get_cached() {
-        return Rc::clone(cached);
+        return cached;
     }
 
     // Evaluate atoms:
@@ -48,9 +90,20 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     // f     x
     // ```
     let (f, x, y) = match &**f {
-    | Exp::Atom(Atom::Neg) => return a.get(Atom::Int(-eval(x, p, a).to_int())),
-    | Exp::Atom(Atom::Inc) => return a.get(Atom::Int(eval(x, p, a).to_int() + 1)),
-    | Exp::Atom(Atom::Dec) => return a.get(Atom::Int(eval(x, p, a).to_int() - 1)),
+    | Exp::Atom(Atom::Neg) => {
+        let x = -eval(x, p, a).to_int();
+        return a.get(Atom::Int(x));
+    }
+    | Exp::Atom(Atom::Inc) => {
+        let x = eval(x, p, a).to_int();
+        let y = 1;
+        return a.get(Atom::Int(x + y))
+    }
+    | Exp::Atom(Atom::Dec) => {
+        let x = eval(x, p, a).to_int();
+        let y = 1;
+        return a.get(Atom::Int(x - y))
+    }
     | Exp::Atom(Atom::I) => return Rc::clone(x),
     | Exp::Atom(Atom::Nil) => return a.get(Atom::Bool(true)),
     | Exp::Atom(Atom::IsNil) => return Exp::app(
@@ -91,11 +144,31 @@ fn step(e: &Rc<Exp>, p: &Protocol, a: &mut AtomCache) -> Rc<Exp> {
     let (f, x, y, z) = match &**f {
     | Exp::Atom(Atom::Bool(true)) => return Rc::clone(x),
     | Exp::Atom(Atom::Bool(false)) => return Rc::clone(y),
-    | Exp::Atom(Atom::Add) => return a.get(Atom::Int(eval(x, p, a).to_int() + eval(y, p, a).to_int())),
-    | Exp::Atom(Atom::Mul) => return a.get(Atom::Int(eval(x, p, a).to_int() * eval(y, p, a).to_int())),
-    | Exp::Atom(Atom::Div) => return a.get(Atom::Int(eval(x, p, a).to_int() / eval(y, p, a).to_int())),
-    | Exp::Atom(Atom::Lt) => return a.get(Atom::Bool(eval(x, p, a).to_int() < eval(y, p, a).to_int())),
-    | Exp::Atom(Atom::Eq) => return a.get(Atom::Bool(eval(x, p, a).to_int() == eval(y, p, a).to_int())),
+    | Exp::Atom(Atom::Add) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x + y));
+    }
+    | Exp::Atom(Atom::Mul) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x * y));
+    }
+    | Exp::Atom(Atom::Div) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Int(x / y));
+    }
+    | Exp::Atom(Atom::Lt) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Bool(x < y));
+    }
+    | Exp::Atom(Atom::Eq) => {
+        let x = eval(x, p, a).to_int();
+        let y = eval(y, p, a).to_int();
+        return a.get(Atom::Bool(x == y));
+    }
     | Exp::Atom(Atom::Cons) => {
         let cons = Exp::app(
             Exp::app(

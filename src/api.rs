@@ -1,11 +1,13 @@
 use std::env;
 use std::fmt;
+use std::rc::Rc;
 
 use anyhow::anyhow;
 use anyhow::Context as _;
 use reqwest::blocking;
 
-use crate::eval;
+use crate::ast::Exp;
+use crate::ast::AtomCache;
 use crate::transport;
 
 /// Responsible for communicating with the central ICFP server.
@@ -57,16 +59,17 @@ impl Client {
 
     pub fn send_alien_message(
         &self,
-        message: String
-    ) -> anyhow::Result<eval::Value> {
+        cache: &mut AtomCache,
+        message: &Exp,
+    ) -> anyhow::Result<Rc<Exp>> {
         log::info!("Sending alien message");
         self.inner
             .post(&format!("{}/aliens/send", &self.url))
             .query(&[("apiKey", &self.key)])
-            .body(message)
+            .body(transport::modulate(message))
             .send()
             .and_then(Self::extract)
-            .map(|response| transport::demodulate(&response))
+            .map(|response| transport::demodulate(&response, cache))
             .with_context(|| anyhow!("Failed to send alien message"))
     }
 

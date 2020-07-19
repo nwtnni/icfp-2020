@@ -1,37 +1,40 @@
-use crate::eval::Value;
-use std::boxed::Box;
+use std::rc::Rc;
 
-pub fn modulate_list(value: Value) -> String {
+use crate::ast::Atom;
+use crate::ast::AtomCache;
+use crate::ast::Exp;
+
+pub fn modulate(list: &Exp) -> String {
     let mut buffer = String::new();
-    use crate::eval::Value::*;
-    match value {
-        Nil => {
-            buffer.push_str("00");
-            buffer
-        },
-        Cons(v1, v2) => {
-            buffer.push_str("11");
-            buffer.push_str(modulate_list(*v1).as_str());
-            buffer.push_str(modulate_list(*v2).as_str());
-            buffer
-        },
-        Int(i) => {
-            buffer.push_str(modulate(i).as_str());
-            buffer
-        }
-        _ => panic!("Cannot modulate things that are not lists or ints")
-    }
+    modulate_mut(list, &mut buffer);
+    buffer
 }
 
+fn modulate_mut(list: &Exp, buffer: &mut String) {
+    if let Exp::Atom(Atom::Nil) = list {
+        buffer.push_str("00");
+        return;
+    }
 
-pub fn modulate(value: i64) -> String {
+    if let Exp::Atom(Atom::Int(int)) = list {
+        modulate_int_mut(*int, buffer);
+        return;
+    }
+
+    let (head, tail) = list.to_cons();
+    buffer.push_str("11");
+    modulate_mut(&head, buffer);
+    modulate_mut(&tail, buffer);
+}
+
+pub fn modulate_int(value: i64) -> String {
     let mut buffer = String::new();
-    modulate_mut(value, &mut buffer);
+    modulate_int_mut(value, &mut buffer);
     buffer
 }
 
 /// https://message-from-space.readthedocs.io/en/latest/message13.html
-pub fn modulate_mut(value: i64, buffer: &mut String) {
+pub fn modulate_int_mut(value: i64, buffer: &mut String) {
 
     // Bits 0..1 define a positive or negative number (and signal width)
     // via a high/low or low/high signal change:
@@ -81,24 +84,25 @@ pub fn modulate_mut(value: i64, buffer: &mut String) {
     }
 }
 
-pub fn demodulate(value: &str) -> Value {
-    let (ret, _) = demodulate_list(value);
+pub fn demodulate(list: &str, cache: &mut AtomCache) -> Rc<Exp> {
+    let (ret, _) = demodulate_list(list, cache);
+    ret.set_cached(Rc::clone(&ret));
     ret
 }
 
-pub fn demodulate_list(value: &str) -> (Value, &str) {
+pub fn demodulate_list<'v>(value: &'v str, cache: &mut AtomCache) -> (Rc<Exp>, &'v str) {
     match &value[0..2] {
-        "00" => (Value::Nil, &value[2..]),
-        "11" => {
-            let (ret, rest) = demodulate_list(&value[2..]);
-            let (ret2, rest) = demodulate_list(&rest);
-            ( Value::Cons( Box::new(ret), Box::new(ret2)), &rest)
-            },
-        _ => demodulate_int(value),
+    | "00" => (cache.get(Atom::Nil), &value[2..]),
+    | "11" => {
+        let (head, rest) = demodulate_list(&value[2..], cache);
+        let (tail, rest) = demodulate_list(&rest, cache);
+        (Exp::app(Exp::app(cache.get(Atom::Cons), head), tail), rest)
+    }
+    | _ => demodulate_int(value, cache),
     }
 }
 
-fn demodulate_int(v: &str) -> (Value, &str) {
+fn demodulate_int<'v>(v: &'v str, cache: &mut AtomCache) -> (Rc<Exp>, &'v str) {
     let positive = &v[0..2] == "01";
     let index = v[2..]
         .find('0')
@@ -108,7 +112,7 @@ fn demodulate_int(v: &str) -> (Value, &str) {
     if !positive {
         final_val = -final_val;
     }
-    (Value::Int(final_val), &v[index+3+length..])
+    (cache.get(Atom::Int(final_val)), &v[index+3+length..])
 }
 
 /// https://message-from-space.readthedocs.io/en/latest/message14.html
@@ -127,82 +131,81 @@ fn demodulate_number(value: &str) -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::eval::Value;
-    use crate::eval::eval;
-    use crate::parse::exp;
-    use crate::lex::lex;
 
-    #[test]
-    fn mod_0() {
-        assert_eq!(super::modulate(0), "010");
-    }
-
-    #[test]
-    fn mod_1() {
-        assert_eq!(super::modulate(1), "01100001");
-    }
-
-    #[test]
-    fn mod_16() {
-        assert_eq!(super::modulate(16), "0111000010000");
-    }
-
-    #[test]
-    fn mod_256() {
-        assert_eq!(super::modulate(256), "011110000100000000");
-    }
-
-    #[test]
-    fn mod_neg_100() {
-        assert_eq!(super::modulate(-100), "1011001100100");
-    }
+    // use crate::parse::exp;
+    // use crate::lex::lex;
 
     // #[test]
-    // fn round_trip() {
-    //     let mut buffer = String::new();
-    //     for value in 0..1000 {
-    //         buffer.clear();
-    //         super::modulate_mut(value, &mut buffer);
-    //         assert_eq!(super::demodulate(&buffer), value);
-    //     }
+    // fn mod_0() {
+    //     assert_eq!(super::modulate(0), "010");
     // }
 
-    #[test]
-    fn demodulate_0() {
-        assert_eq!(super::demodulate_int("010"), (Value::Int(0), ""));
-    }
+    // #[test]
+    // fn mod_1() {
+    //     assert_eq!(super::modulate(1), "01100001");
+    // }
 
-    #[test]
-    fn demodulate_neg_100() {
-        assert_eq!(super::demodulate_int("1011001100100"), (Value::Int(-100), ""));
-    }
+    // #[test]
+    // fn mod_16() {
+    //     assert_eq!(super::modulate(16), "0111000010000");
+    // }
 
-    #[test]
-    fn demodulate_16() {
-        assert_eq!(super::demodulate_int("0111000010000"), (Value::Int(16), ""));
-    }
+    // #[test]
+    // fn mod_256() {
+    //     assert_eq!(super::modulate(256), "011110000100000000");
+    // }
 
-    #[test]
-    fn demodulate_list() {
-        let long_list = eval(
-            dbg!(&exp(
-                &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
-                ).expect("bruh")));
-        assert_eq!(
-            super::demodulate_list("1101100001111101100010110110001100110110010000"),
-            (long_list, "")
-        )
-    }
+    // #[test]
+    // fn mod_neg_100() {
+    //     assert_eq!(super::modulate(-100), "1011001100100");
+    // }
 
-    #[test]
-    fn demodulate() {
-        let long_list = eval(
-            dbg!(&exp(
-                &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
-                ).expect("bruh")));
-        assert_eq!(
-            super::demodulate("1101100001111101100010110110001100110110010000"),
-            long_list
-        )
-    }
+    // // #[test]
+    // // fn round_trip() {
+    // //     let mut buffer = String::new();
+    // //     for value in 0..1000 {
+    // //         buffer.clear();
+    // //         super::modulate_mut(value, &mut buffer);
+    // //         assert_eq!(super::demodulate(&buffer), value);
+    // //     }
+    // // }
+
+    // #[test]
+    // fn demodulate_0() {
+    //     assert_eq!(super::demodulate_int("010"), (Value::Int(0), ""));
+    // }
+
+    // #[test]
+    // fn demodulate_neg_100() {
+    //     assert_eq!(super::demodulate_int("1011001100100"), (Value::Int(-100), ""));
+    // }
+
+    // #[test]
+    // fn demodulate_16() {
+    //     assert_eq!(super::demodulate_int("0111000010000"), (Value::Int(16), ""));
+    // }
+
+    // #[test]
+    // fn demodulate_list() {
+    //     let long_list = eval(
+    //         dbg!(&exp(
+    //             &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
+    //             ).expect("bruh")));
+    //     assert_eq!(
+    //         super::demodulate_list("1101100001111101100010110110001100110110010000"),
+    //         (long_list, "")
+    //     )
+    // }
+
+    // #[test]
+    // fn demodulate() {
+    //     let long_list = eval(
+    //         dbg!(&exp(
+    //             &mut lex("ap ap cons 1 ap ap cons ap ap cons 2 ap ap cons 3 nil ap ap cons 4 nil")
+    //             ).expect("bruh")));
+    //     assert_eq!(
+    //         super::demodulate("1101100001111101100010110110001100110110010000"),
+    //         long_list
+    //     )
+    // }
 }

@@ -1,5 +1,3 @@
-use std::fs;
-
 mod api;
 pub mod ast;
 pub mod draw;
@@ -13,6 +11,5 @@ pub use api::Client;
 pub use draw::draw;
 pub use eval::eval;
 pub use eval::interact;
-pub use eval::Value;
 pub use lex::lex;
 pub use token::Token;

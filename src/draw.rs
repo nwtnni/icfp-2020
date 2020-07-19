@@ -3,7 +3,8 @@ use std::io::Write;
 use std::time;
 use std::thread;
 
-use crate::eval::Value;
+use crate::ast::Atom;
+use crate::ast::Exp;
 
 const CSI: &str = "\x1b[";
 const CLEAR_SCREEN: &str = "\x1b[2J";
@@ -34,54 +35,50 @@ fn draw_at(x: i64, y:i64) {
     io::stdout().flush().unwrap();
 }
 
-fn extract_int(v: &Value) -> i64 {
-    match v {
-    | Value::Int(vv) => *vv,
+fn extract_int(exp: &Exp) -> i64 {
+    match exp {
+    | Exp::Atom(Atom::Int(vv)) => *vv,
     | _ => panic!("Extracting int from non-int"),
     }
 }
 
-fn draw_point(v: &Value) {
-    match v {
-    | Value::Cons(v1, v2) => draw_at(extract_int(v1), extract_int(v2)),
-    | _ => panic!("Not a valid pair")
-    }
+fn draw_point(exp: &Exp) {
+    let (v1, v2) = exp.to_cons();
+    draw_at(extract_int(v1), extract_int(v2));
 }
 
-fn _draw(v: &Value) {
-    match v {
-    | Value::Cons(v, n) => {
-        draw_point(v);
-        _draw(n)
-    },
-    | Value::Nil => (),
-    | _ => panic!("Not a valid list"),
+fn _draw(exp: &Exp) {
+    if let Exp::Atom(Atom::Nil) = exp {
+        return;
     }
+
+    let (v, n) = exp.to_cons();
+    draw_point(v);
+    _draw(n);
 }
 
-pub fn draw(v: &Value) {
+pub fn draw(exp: &Exp) {
     clear();
-    _draw(v);
+    _draw(exp);
     io::stdout().flush().unwrap();
 }
 
-fn _multidraw(v: &Value) {
-    match v {
-    | Value::Cons(image, rest) => {
-        _draw(image);
-        thread::sleep(time::Duration::from_secs(1));
-        _multidraw(rest);
-    },
-    | Value::Nil => (),
-    | _ => panic!("Not a valid list of images"),
+fn _multidraw(exp: &Exp) {
+    if let Exp::Atom(Atom::Nil) = exp {
+        return;
     }
+
+    let (image, rest) = exp.to_cons();
+    _draw(image);
+    thread::sleep(time::Duration::from_secs(1));
+    _multidraw(rest);
 }
 
-pub fn multidraw(v: &Value) {
+pub fn multidraw(exp: &Exp) {
     alt_buffer();
     hide_cursor();
     clear();
-    _multidraw(v);
+    _multidraw(exp);
     show_cursor();
     reg_buffer();
     io::stdout().flush().unwrap();
