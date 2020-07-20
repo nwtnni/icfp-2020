@@ -31,9 +31,9 @@ fn main() -> anyhow::Result<()> {
     log::info!("Initial State: {:#?}", initial);
 
     let stats = game::Stats {
-        fuel: 238,
+        fuel: 302,
         damage: 0,
-        coolant: 32,
+        coolant: 24,
         bombs: 1,
     };
 
