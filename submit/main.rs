@@ -37,6 +37,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut current = client.start(&mut atoms, &stats)?;
     let mut commands = Vec::new();
+    let mut spawned = 0;
+    let mut rng = rand::thread_rng();
 
     let team = current.info.role;
 
@@ -52,31 +54,34 @@ fn main() -> anyhow::Result<()> {
 
         match team {
         | game::Role::Defend => {
-            commands.extend(
-                state
-                    .ships
-                    .iter()
-                    .filter(|(ship, _)| ship.role == team)
-                    .flat_map(|(ship, _)| {
-                        if ship.temp > ship.max_temp / 2 {
-                            return None;
-                        }
+            for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
+                if ally.temp <= ally.max_temp / 2 {
+                    let (dx, dy) = direction(ally);
 
-                        let (dx, dy) = direction(ship);
+                    let sign = match ally.vx.pow(2) + ally.vy.pow(2) {
+                    | 000..=064 => 1,
+                    | 065..=128 => 0,
+                    | _ => -1,
+                    };
 
-                        let sign = match ship.vx.pow(2) + ship.vy.pow(2) {
-                        | 000..=064 => 1,
-                        | 065..=128 => return None,
-                        | _ => -1,
-                        };
-
-                        Some(game::Command::Accelerate {
-                            id: ship.id,
-                            x: dx * sign,
-                            y: dy * sign,
-                        })
+                    commands.push(game::Command::Accelerate {
+                        id: ally.id,
+                        x: tweak(dx * sign, &mut rng),
+                        y: tweak(dy * sign, &mut rng),
                     })
-            );
+                }
+
+                if ally.stats.fuel > 128
+                && (state.tick - spawned) > 16 {
+                    spawned = state.tick;
+                    commands.push(game::Command::Split(game::Stats {
+                        fuel: 64,
+                        damage: 0,
+                        coolant: 0,
+                        bombs: 0,
+                    }))
+                }
+            }
         }
         | game::Role::Attack => {
             for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
@@ -140,5 +145,20 @@ fn direction(ship: &game::Ship) -> (i64, i64) {
     | (false, true) => (-1, -1),
     | (false, false) => (1, -1),
     | (true, false) => (1, 1),
+    }
+}
+
+fn tweak<R: rand::Rng>(x: i64, rng: &mut R) -> i64 {
+    if rng.gen_ratio(1, 8) {
+        match (x, rng.gen()) {
+        | (0, true) => 1,
+        | (0, false) => -1,
+        | (1, true) => 0,
+        | (1, false) => -1,
+        | (_, true) => 1,
+        | (_, false) => 0,
+        }
+    } else {
+        x
     }
 }

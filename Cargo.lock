@@ -366,6 +366,7 @@ dependencies = [
  "log",
  "minifb",
  "once_cell",
+ "rand 0.7.3",
  "reqwest",
 ]
 
