@@ -28,8 +28,8 @@ fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let client = icfp::Client::new(
-        URL.to_owned(),
-        KEY.to_owned(),
+        URL.trim().to_owned(),
+        KEY.trim().to_owned(),
         None,
     );
 

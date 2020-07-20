@@ -1,3 +1,3 @@
 #!/bin/sh
 
-RUST_LOG="info" /solution/target/release/submit "$@" || echo "run error code: $?"
+RUST_LOG="icfp=debug" /solution/target/release/submit "$@" || echo "run error code: $?"

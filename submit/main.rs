@@ -20,13 +20,13 @@ fn main() -> anyhow::Result<()> {
     let mut atoms = icfp::ast::AtomCache::default();
     let client = icfp::Client::new(
         server_url,
-        API_KEY.to_owned(),
+        API_KEY.trim().to_owned(),
         Some(player_key),
     );
 
-    dbg!(client.join(&mut atoms)?);
+    client.join(&mut atoms)?;
 
-    let mut current = dbg!(client.start(&mut atoms, 1, 2, 3, 4)?);
+    let mut current = client.start(&mut atoms, 1, 2, 3, 4)?;
     let team = current.info.role;
 
     while current.stage != game::Stage::Finished {

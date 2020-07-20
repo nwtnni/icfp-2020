@@ -87,7 +87,7 @@ impl Client {
         cache: &mut AtomCache,
         message: &Exp,
     ) -> anyhow::Result<Rc<Exp>> {
-        log::info!("Sending alien message");
+        log::debug!("Sending alien message: {}", &message);
         self.inner
             .post(&format!("{}/aliens/send", &self.server_url))
             .query(&[("apiKey", &self.api_key)])
@@ -95,6 +95,10 @@ impl Client {
             .send()
             .and_then(Self::extract_text)
             .map(|response| transport::demodulate(&response, cache))
+            .map(|response| {
+                log::debug!("Received alien response: {}", &response);
+                response
+            })
             .with_context(|| anyhow!("Failed to send alien message"))
     }
 
@@ -102,28 +106,26 @@ impl Client {
         &self,
         cache: &mut AtomCache,
     ) -> anyhow::Result<CreateResponse> {
-        self.send_alien_message(
-            cache,
-            &list!(Exp::from(1), Exp::from(0)),
-        )
-        .map(|response| {
-            CreateResponse::from(&*response)
-        })
+        let message = list!(Exp::from(1), Exp::from(0));
+        log::debug!("Sending `create` message: {}", &message);
+        self.send_alien_message(cache, &message)
+            .map(|response| {
+                CreateResponse::from(&*response)
+            })
     }
 
     pub fn join(
         &self,
         cache: &mut AtomCache,
     ) -> anyhow::Result<game::Response> {
-        self.send_alien_message(
-            cache,
-            &list!(
-                Exp::from(2),
-                Exp::from(self.player_key.expect("Missing player key")),
-                Exp::Atom(Atom::Nil)
-            ),
-        )
-        .and_then(Self::extract_game)
+        let message = list!(
+            Exp::from(2),
+            Exp::from(self.player_key.expect("Missing player key")),
+            Exp::Atom(Atom::Nil)
+        );
+        log::debug!("Sending `join` message: {}", &message);
+        self.send_alien_message(cache, &message)
+            .and_then(Self::extract_game)
     }
 
     pub fn start(
@@ -134,15 +136,14 @@ impl Client {
         x2: i64,
         x3: i64,
     ) -> anyhow::Result<game::Response> {
-        self.send_alien_message(
-            cache,
-            &list!(
-                Exp::from(3),
-                Exp::from(self.player_key.expect("Missing player key")),
-                list!(Exp::from(x0), Exp::from(x1), Exp::from(x2), Exp::from(x3)),
-            ),
-        )
-        .and_then(Self::extract_game)
+        let message = list!(
+            Exp::from(3),
+            Exp::from(self.player_key.expect("Missing player key")),
+            list!(Exp::from(x0), Exp::from(x1), Exp::from(x2), Exp::from(x3)),
+        );
+        log::debug!("Sending `start` message: {}", &message);
+        self.send_alien_message(cache, &message)
+            .and_then(Self::extract_game)
     }
 
     pub fn commands(
@@ -157,6 +158,8 @@ impl Client {
                 Exp::cons(Exp::from(*command), acc)
             });
 
+        log::debug!("Sending `commands` message: {}", &commands);
+
         self.send_alien_message(
             cache,
             &list!(
@@ -169,7 +172,6 @@ impl Client {
     }
 
     fn extract_text(response: blocking::Response) -> reqwest::Result<String> {
-        log::info!("Received response: {:#?}", &response);
         response
             .error_for_status()
             .and_then(blocking::Response::text)

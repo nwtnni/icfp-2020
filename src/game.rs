@@ -17,6 +17,9 @@ pub struct Response {
 
 impl From<&Exp> for Option<Response> {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing response: {}", exp);
+
         let (status, tail) = exp.to_cons();
         let status = status.to_int();
 
@@ -45,6 +48,9 @@ pub struct Info {
 
 impl From<&Exp> for Info {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing info: {}", exp);
+
         let (_x0, tail) = exp.to_cons();
         let (role, _) = tail.to_cons();
         let role = Role::from(&**role);
@@ -63,6 +69,9 @@ pub struct State {
 
 impl From<&Exp> for State {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing state: {}", exp);
+
         let (tick, tail) = exp.to_cons();
         let tick = tick.to_int();
 
@@ -113,6 +122,9 @@ pub enum Command {
 
 impl From<&Exp> for Command {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing command: {}", exp);
+
         let (r#type, tail) = exp.to_cons();
         let r#type = r#type.to_int();
 
@@ -182,6 +194,9 @@ pub struct Ship {
 
 impl From<&Exp> for Ship {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing ship: {}", exp);
+
         let (role, tail) = exp.to_cons();
         let role = Role::from(&**role);
 
@@ -242,6 +257,9 @@ pub enum Role {
 
 impl From<&Exp> for Role {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing role: {}", exp);
+
         match exp {
         | Exp::Atom(Atom::Int(0)) => Role::Attack,
         | Exp::Atom(Atom::Int(1)) => Role::Defend,
@@ -268,6 +286,9 @@ pub enum Stage {
 
 impl From<&Exp> for Stage {
     fn from(exp: &Exp) -> Self {
+
+        log::debug!("Parsing stage: {}", exp);
+
         match exp {
         | Exp::Atom(Atom::Int(0)) => Stage::NotStarted,
         | Exp::Atom(Atom::Int(1)) => Stage::Started,
