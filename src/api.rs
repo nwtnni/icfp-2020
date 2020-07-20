@@ -117,15 +117,15 @@ impl Client {
     pub fn join(
         &self,
         cache: &mut AtomCache,
-    ) -> anyhow::Result<game::Response> {
+    ) -> anyhow::Result<()> {
         let message = list!(
             Exp::from(2),
             Exp::from(self.player_key.expect("Missing player key")),
             Exp::Atom(Atom::Nil)
         );
         log::debug!("Sending `join` message: {}", &message);
-        self.send_alien_message(cache, &message)
-            .and_then(Self::extract_game)
+        self.send_alien_message(cache, &message)?;
+        Ok(())
     }
 
     pub fn start(

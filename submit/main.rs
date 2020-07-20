@@ -26,11 +26,14 @@ fn main() -> anyhow::Result<()> {
         Some(player_key),
     );
 
-    let initial = client.join(&mut atoms)?;
+    client.join(&mut atoms)?;
 
-    log::info!("Initial State: {:#?}", initial);
-
-    let stats = game::Stats { fuel: 128, damage: 0, coolant: 16, spawns: 96 };
+    let stats = game::Stats {
+        fuel: 192,
+        damage: 0,
+        coolant: 8,
+        spawns: 64,
+    };
 
     let mut current = client.start(&mut atoms, &stats)?;
     let mut commands = Vec::new();
