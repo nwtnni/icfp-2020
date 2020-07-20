@@ -1,4 +1,3 @@
-use std::env;
 use std::fmt;
 use std::rc::Rc;
 
@@ -19,7 +18,8 @@ use crate::transport;
 pub struct Client {
     inner: blocking::Client,
     api_key: String,
-    url: String,
+    player_key: Option<i64>,
+    server_url: String,
 }
 
 #[derive(Clone, Debug)]
@@ -53,37 +53,32 @@ impl From<&Exp> for CreateResponse {
 impl fmt::Debug for Client {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("icfp::api::Client")
-            .field("url", &self.url)
+            .field("server_url", &self.server_url)
             .finish()
     }
 }
 
 impl Client {
-    pub fn new() -> anyhow::Result<Self> {
-        let mut args = env::args().skip(1);
-
-        let url = args
-            .next()
-            .or_else(|| env::var("ICFP_SERVER_URL").ok())
-            .ok_or_else(Self::usage)?;
-
-        let api_key = args
-            .next()
-            .or_else(|| env::var("ICFP_API_KEY").ok())
-            .ok_or_else(Self::usage)?;
-
-        let client = blocking::Client::new();
-
-        Ok(Client { inner: client, api_key, url })
+    pub fn new(
+        server_url: String,
+        api_key: String,
+        player_key: Option<i64>,
+    ) -> Self {
+        Client {
+            inner: blocking::Client::new(),
+            api_key,
+            player_key,
+            server_url,
+        }
     }
 
     pub fn get_alien_response(&self, id: &str) -> anyhow::Result<String> {
         log::info!("Retrieving alien response for id '{}'", id);
         self.inner
-            .get(&format!("{}/aliens/{}", &self.url, id))
+            .get(&format!("{}/aliens/{}", &self.server_url, id))
             .query(&[("apiKey", &self.api_key)])
             .send()
-            .and_then(Self::extract)
+            .and_then(Self::extract_text)
             .with_context(|| anyhow!("Failed to retrieve alien response for id '{}'", id))
     }
 
@@ -94,11 +89,11 @@ impl Client {
     ) -> anyhow::Result<Rc<Exp>> {
         log::info!("Sending alien message");
         self.inner
-            .post(&format!("{}/aliens/send", &self.url))
+            .post(&format!("{}/aliens/send", &self.server_url))
             .query(&[("apiKey", &self.api_key)])
             .body(transport::modulate(message))
             .send()
-            .and_then(Self::extract)
+            .and_then(Self::extract_text)
             .map(|response| transport::demodulate(&response, cache))
             .with_context(|| anyhow!("Failed to send alien message"))
     }
@@ -119,26 +114,21 @@ impl Client {
     pub fn join(
         &self,
         cache: &mut AtomCache,
-        player_key: i64,
     ) -> anyhow::Result<game::Response> {
         self.send_alien_message(
             cache,
             &list!(
                 Exp::from(2),
-                Exp::from(player_key),
+                Exp::from(self.player_key.expect("Missing player key")),
                 Exp::Atom(Atom::Nil)
             ),
         )
-        .and_then(|response| {
-            <Option<game::Response>>::from(&*response)
-                .ok_or_else(|| anyhow!("Received error response for `join` from server"))
-        })
+        .and_then(Self::extract_game)
     }
 
     pub fn start(
         &self,
         cache: &mut AtomCache,
-        player_key: i64,
         x0: i64,
         x1: i64,
         x2: i64,
@@ -148,20 +138,16 @@ impl Client {
             cache,
             &list!(
                 Exp::from(3),
-                Exp::from(player_key),
+                Exp::from(self.player_key.expect("Missing player key")),
                 list!(Exp::from(x0), Exp::from(x1), Exp::from(x2), Exp::from(x3)),
             ),
         )
-        .and_then(|response| {
-            <Option<game::Response>>::from(&*response)
-                .ok_or_else(|| anyhow!("Received error response for `start` from server"))
-        })
+        .and_then(Self::extract_game)
     }
 
     pub fn commands(
         &self,
         cache: &mut AtomCache,
-        player_key: i64,
         commands: &[game::Command],
     ) -> anyhow::Result<game::Response> {
         let commands = commands
@@ -175,24 +161,22 @@ impl Client {
             cache,
             &list!(
                 Exp::from(4),
-                Exp::from(player_key),
+                Exp::from(self.player_key.expect("Missing player key")),
                 commands,
             ),
         )
-        .and_then(|response| {
-            <Option<game::Response>>::from(&*response)
-                .ok_or_else(|| anyhow!("Received error response for `commands` from server"))
-        })
+        .and_then(Self::extract_game)
     }
 
-    fn extract(response: blocking::Response) -> reqwest::Result<String> {
+    fn extract_text(response: blocking::Response) -> reqwest::Result<String> {
         log::info!("Received response: {:#?}", &response);
         response
             .error_for_status()
             .and_then(blocking::Response::text)
     }
 
-    fn usage() -> anyhow::Error {
-        anyhow!("Usage: icfp <SERVER_URL> <API_KEY>")
+    fn extract_game(response: Rc<Exp>) -> anyhow::Result<game::Response> {
+        <Option<game::Response>>::from(&*response)
+            .ok_or_else(|| anyhow!("Received error response from server"))
     }
 }

@@ -38,10 +38,6 @@ name = "submit"
 path = "submit/main.rs"
 
 [[bin]]
-name = "stateless"
-path = "stateless/main.rs"
-
-[[bin]]
 name = "galaxy"
 path = "galaxy/main.rs"
 

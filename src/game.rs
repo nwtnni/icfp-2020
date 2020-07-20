@@ -55,10 +55,10 @@ impl From<&Exp> for Info {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct State {
     /// Time inside the game.
-    tick: i64,
+    pub tick: i64,
 
     /// All ships and previously applied commands.
-    ships: Vec<(Ship, Vec<Command>)>,
+    pub ships: Vec<(Ship, Vec<Command>)>,
 }
 
 impl From<&Exp> for State {
@@ -172,12 +172,12 @@ impl From<Command> for Exp {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ship {
-    role: Role,
-    id: i64,
-    x: i64,
-    y: i64,
-    vx: i64,
-    vy: i64,
+    pub role: Role,
+    pub id: i64,
+    pub x: i64,
+    pub y: i64,
+    pub vx: i64,
+    pub vy: i64,
 }
 
 impl From<&Exp> for Ship {

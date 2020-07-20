@@ -20,12 +20,18 @@ const WIDTH: usize = 1920;
 const HEIGHT: usize = 1080;
 
 static INITIAL_VECTORS: &str = include_str!("init.txt");
+static URL: &str = include_str!("../url.txt");
+static KEY: &str = include_str!("../key.txt");
 
 fn main() -> anyhow::Result<()> {
 
     env_logger::init();
 
-    let client = icfp::Client::new()?;
+    let client = icfp::Client::new(
+        URL.to_owned(),
+        KEY.to_owned(),
+        None,
+    );
 
     let path = env::var("ICFP_PROTOCOL")
         .unwrap_or_else(|_| String::from("data/galaxy.txt"));
