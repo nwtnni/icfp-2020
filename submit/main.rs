@@ -26,17 +26,30 @@ fn main() -> anyhow::Result<()> {
         Some(player_key),
     );
 
-    client.join(&mut atoms)?;
+    let initial = client.join(&mut atoms)?;
 
-    let mut current = client.start(&mut atoms, 1, 2, 3, 4)?;
+    log::info!("Initial State: {:#?}", initial);
+
+    let stats = game::Stats {
+        fuel: 238,
+        damage: 0,
+        coolant: 32,
+        bombs: 1,
+    };
+
+    let mut current = client.start(&mut atoms, &stats)?;
+
     let team = current.info.role;
 
     while current.stage != game::Stage::Finished {
 
-        log::info!("Tick {}", current.state.tick);
-
-        let commands = current
+        let state = current
             .state
+            .expect("Missing game state");
+
+        log::info!("Tick {}", state.tick);
+
+        let commands = state
             .ships
             .iter()
             .filter(|(ship, _)| ship.role == team)

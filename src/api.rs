@@ -131,15 +131,12 @@ impl Client {
     pub fn start(
         &self,
         cache: &mut AtomCache,
-        x0: i64,
-        x1: i64,
-        x2: i64,
-        x3: i64,
+        stats: &game::Stats,
     ) -> anyhow::Result<game::Response> {
         let message = list!(
             Exp::from(3),
             Exp::from(self.player_key.expect("Missing player key")),
-            list!(Exp::from(x0), Exp::from(x1), Exp::from(x2), Exp::from(x3)),
+            Exp::from(*stats),
         );
         log::debug!("Sending `start` message: {}", &message);
         self.send_alien_message(cache, &message)

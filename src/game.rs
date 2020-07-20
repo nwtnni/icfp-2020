@@ -12,7 +12,7 @@ pub struct Response {
     pub stage: Stage,
 
     /// Dynamic game state.
-    pub state: State,
+    pub state: Option<State>,
 }
 
 impl From<&Exp> for Option<Response> {
@@ -31,8 +31,9 @@ impl From<&Exp> for Option<Response> {
             let (info, tail) = tail.to_cons();
             let info = Info::from(&**info);
 
-            let (state, _) = tail.to_cons();
-            let state = State::from(&**state);
+            let state = tail
+                .to_cons_opt()
+                .map(|(state, _)| State::from(&**state));
 
             Some(Response { info, stage, state })
         }
@@ -43,7 +44,56 @@ impl From<&Exp> for Option<Response> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Info {
+    /// Maximum number of game ticks.
+    pub ticks: i64,
+
+    /// Attacking or defending role.
     pub role: Role,
+
+    /// If attacking, we have access to enemy statistics.
+    pub enemy: Option<Stats>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Stats {
+    pub fuel: i64,
+    pub damage: i64,
+    pub coolant: i64,
+    pub bombs: i64,
+}
+
+impl From<&Exp> for Stats {
+    fn from(exp: &Exp) -> Stats {
+
+        log::debug!("Parsing stats: {}", exp);
+
+        let (fuel, tail) = exp.to_cons();
+        let fuel = fuel.to_int();
+
+        let (damage, tail) = tail.to_cons();
+        let damage = damage.to_int();
+
+        let (coolant, tail) = tail.to_cons();
+        let coolant = coolant.to_int();
+
+        let (bombs, _) = tail.to_cons();
+        let bombs = bombs.to_int();
+        
+        Stats { fuel, damage, coolant, bombs }
+    }
+}
+
+impl From<Stats> for Exp {
+    fn from(stats: Stats) -> Exp {
+        let stats = list!(
+            Exp::from(stats.fuel),
+            Exp::from(stats.damage),
+            Exp::from(stats.coolant),
+            Exp::from(stats.bombs),
+        );
+        Rc::try_unwrap(stats)
+            .expect("Impossible: stats Rc has single owner")
+    }
 }
 
 impl From<&Exp> for Info {
@@ -51,10 +101,23 @@ impl From<&Exp> for Info {
 
         log::debug!("Parsing info: {}", exp);
 
-        let (_x0, tail) = exp.to_cons();
-        let (role, _) = tail.to_cons();
+        let (ticks, tail) = exp.to_cons();
+        let ticks = ticks.to_int();
+
+        let (role, tail) = tail.to_cons();
         let role = Role::from(&**role);
-        Info { role }
+
+        // (512, 1, 64) ?
+        let (_, tail) = tail.to_cons();
+
+        // (16, 128) ?
+        let (_, tail) = tail.to_cons();
+
+        let enemy = tail
+            .to_cons_opt()
+            .map(|(enemy, _)| Stats::from(&**enemy));
+
+        Info { ticks, role, enemy }
     }
 }
 
