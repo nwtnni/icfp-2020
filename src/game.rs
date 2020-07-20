@@ -61,7 +61,7 @@ pub struct Stats {
     pub fuel: i64,
     pub damage: i64,
     pub coolant: i64,
-    pub bombs: i64,
+    pub spawns: i64,
 }
 
 impl From<&Exp> for Stats {
@@ -78,10 +78,10 @@ impl From<&Exp> for Stats {
         let (coolant, tail) = tail.to_cons();
         let coolant = coolant.to_int();
 
-        let (bombs, _) = tail.to_cons();
-        let bombs = bombs.to_int();
+        let (spawns, _) = tail.to_cons();
+        let spawns = spawns.to_int();
         
-        Stats { fuel, damage, coolant, bombs }
+        Stats { fuel, damage, coolant, spawns }
     }
 }
 
@@ -91,7 +91,7 @@ impl From<Stats> for Exp {
             Exp::from(stats.fuel),
             Exp::from(stats.damage),
             Exp::from(stats.coolant),
-            Exp::from(stats.bombs),
+            Exp::from(stats.spawns),
         );
         Rc::try_unwrap(stats)
             .expect("Impossible: stats Rc has single owner")

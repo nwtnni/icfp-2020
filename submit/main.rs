@@ -31,13 +31,12 @@ fn main() -> anyhow::Result<()> {
     log::info!("Initial State: {:#?}", initial);
 
     let stats = match initial.info.role {
-    | game::Role::Attack => game::Stats { fuel: 124, damage: 64, coolant: 8, bombs: 1, },
-    | game::Role::Defend => game::Stats { fuel: 252, damage: 0, coolant: 16, bombs: 1, },
+    | game::Role::Attack => game::Stats { fuel: 128, damage: 64, coolant: 8, spawns: 1, },
+    | game::Role::Defend => game::Stats { fuel: 128, damage: 0, coolant: 16, spawns: 96, },
     };
 
     let mut current = client.start(&mut atoms, &stats)?;
     let mut commands = Vec::new();
-    let mut spawned = 0;
     let mut rng = rand::thread_rng();
 
     let team = current.info.role;
@@ -55,10 +54,25 @@ fn main() -> anyhow::Result<()> {
         match team {
         | game::Role::Defend => {
             for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
-                if ally.temp <= ally.max_temp / 2 {
+
+                // Skip dummy ships with no fuel
+                if ally.stats.fuel == 0 {
+                    continue;
+                }
+
+                let speed = ally.vx.pow(2) + ally.vy.pow(2);
+
+                if ally.stats.fuel > 64 && speed > 64 {
+                    commands.push(game::Command::Split(game::Stats {
+                        fuel: 0,
+                        damage: 0,
+                        coolant: 0,
+                        spawns: 1,
+                    }))
+                } else if ally.temp <= ally.max_temp / 2 {
                     let (dx, dy) = direction(ally);
 
-                    let sign = match ally.vx.pow(2) + ally.vy.pow(2) {
+                    let sign = match speed {
                     | 000..=064 => 1,
                     | 065..=128 => 0,
                     | _ => -1,
@@ -69,17 +83,6 @@ fn main() -> anyhow::Result<()> {
                         x: tweak(dx * sign, &mut rng),
                         y: tweak(dy * sign, &mut rng),
                     })
-                }
-
-                if ally.stats.fuel > 128
-                && (state.tick - spawned) > 16 {
-                    spawned = state.tick;
-                    commands.push(game::Command::Split(game::Stats {
-                        fuel: 64,
-                        damage: 0,
-                        coolant: 0,
-                        bombs: 0,
-                    }))
                 }
             }
         }
