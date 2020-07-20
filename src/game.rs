@@ -185,6 +185,7 @@ pub enum Command {
         id: i64,
         x: i64,
         y: i64,
+        power: i64,
     },
     Split {
         id: i64,
@@ -197,7 +198,7 @@ impl Command {
         match self {
         | Command::Accelerate { id: _, x, y } => Command::Accelerate { id, x, y },
         | Command::Detonate { .. } => Command::Detonate { id },
-        | Command::Shoot { id: _, x, y } => Command::Shoot { id, x, y },
+        | Command::Shoot { id: _, x, y, power } => Command::Shoot { id, x, y, power },
         | Command::Split { id: _, stats } => Command::Split { id, stats },
         }
     }
@@ -224,11 +225,15 @@ impl From<&Exp> for Option<Command> {
         }
         | 1 =>  Some(Command::Detonate { id }),
         | 2 => {
-            let (target, _) = tail.to_cons();
+            let (target, tail) = tail.to_cons();
             let (x, y) = target.to_cons();
             let x = x.to_int();
             let y = y.to_int();
-            Some(Command::Shoot { id, x, y })
+
+            let (power, _) = tail.to_cons();
+            let power = power.to_int();
+
+            Some(Command::Shoot { id, x, y, power })
         }
         | 3 => {
             let (stats, _) = tail.to_cons();
@@ -256,12 +261,12 @@ impl From<Command> for Exp {
                 Exp::from(id),
             )
         }
-        | Command::Shoot { id, x, y } => {
+        | Command::Shoot { id, x, y, power } => {
             list!(
                 Exp::from(2),
                 Exp::from(id),
                 pair!(Exp::from(x), Exp::from(y)),
-                Exp::Atom(Atom::Nil),
+                Exp::from(power),
             )
         }
         | Command::Split { id, stats } => {
