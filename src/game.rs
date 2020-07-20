@@ -31,9 +31,11 @@ impl From<&Exp> for Option<Response> {
             let (info, tail) = tail.to_cons();
             let info = Info::from(&**info);
 
-            let state = tail
-                .to_cons_opt()
-                .map(|(state, _)| State::from(&**state));
+            let (state, _) = tail.to_cons();
+            let state = match &**state {
+            | Exp::Atom(Atom::Nil) => None,
+            | list => Some(State::from(list)),
+            };
 
             Some(Response { info, stage, state })
         }
@@ -114,10 +116,10 @@ impl From<&Exp> for Info {
         let (_, tail) = tail.to_cons();
 
         let (enemy, _) = tail.to_cons();
-
-        let enemy = enemy
-            .to_cons_opt()
-            .map(|(enemy, _)| Stats::from(&**enemy));
+        let enemy = match &**enemy {
+        | Exp::Atom(Atom::Nil) => None,
+        | list => Some(Stats::from(list)),
+        };
 
         Info { ticks, role, enemy }
     }
