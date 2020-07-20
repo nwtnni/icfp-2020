@@ -17,6 +17,8 @@ fn main() -> anyhow::Result<()> {
         .parse::<i64>()
         .unwrap();
 
+    log::info!("Player Key: {}", player_key);
+
     let mut atoms = icfp::ast::AtomCache::default();
     let client = icfp::Client::new(
         server_url,
@@ -40,8 +42,8 @@ fn main() -> anyhow::Result<()> {
             .filter(|(ship, _)| ship.role == team)
             .map(|(ship, _)| game::Command::Accelerate {
                 id: ship.id,
-                x: 1,
-                y: 1
+                x: ship.vx,
+                y: ship.vy,
             })
             .collect::<Vec<_>>();
 

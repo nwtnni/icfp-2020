@@ -87,7 +87,7 @@ impl Client {
         cache: &mut AtomCache,
         message: &Exp,
     ) -> anyhow::Result<Rc<Exp>> {
-        log::debug!("Sending alien message: {}", &message);
+        log::trace!("Sending alien message: {}", &message);
         self.inner
             .post(&format!("{}/aliens/send", &self.server_url))
             .query(&[("apiKey", &self.api_key)])
@@ -96,7 +96,7 @@ impl Client {
             .and_then(Self::extract_text)
             .map(|response| transport::demodulate(&response, cache))
             .map(|response| {
-                log::debug!("Received alien response: {}", &response);
+                log::trace!("Received alien response: {}", &response);
                 response
             })
             .with_context(|| anyhow!("Failed to send alien message"))
@@ -178,7 +178,9 @@ impl Client {
     }
 
     fn extract_game(response: Rc<Exp>) -> anyhow::Result<game::Response> {
-        <Option<game::Response>>::from(&*response)
-            .ok_or_else(|| anyhow!("Received error response from server"))
+        let response = <Option<game::Response>>::from(&*response)
+            .ok_or_else(|| anyhow!("Received error response from server"))?;
+        log::debug!("Received response: {:#?}", response);
+        Ok(response)
     }
 }
