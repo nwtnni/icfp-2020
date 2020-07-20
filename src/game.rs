@@ -258,7 +258,7 @@ impl From<Command> for Exp {
                 Exp::from(2),
                 Exp::from(id),
                 pair!(Exp::from(x), Exp::from(y)),
-                Exp::Atom(Atom::Var(3)),
+                Exp::Atom(Atom::Nil),
             )
         }
         | Command::Split(stats) => {
