@@ -50,43 +50,36 @@ fn main() -> anyhow::Result<()> {
 
         commands.clear();
 
-        commands.extend(
-            state
-                .ships
-                .iter()
-                .filter(|(ship, _)| ship.role == team)
-                .flat_map(|(ship, _)| {
-                    if ship.temp > ship.max_temp / 2 {
-                        return None;
-                    }
+        match team {
+        | game::Role::Defend => {
+            commands.extend(
+                state
+                    .ships
+                    .iter()
+                    .filter(|(ship, _)| ship.role == team)
+                    .flat_map(|(ship, _)| {
+                        if ship.temp > ship.max_temp / 2 {
+                            return None;
+                        }
 
-                    let (dx, dy) = match (ship.x >= 0, ship.y >= 0) {
-                    | (true, true) => (-1, 1),
-                    | (false, true) => (-1, -1),
-                    | (false, false) => (1, -1),
-                    | (true, false) => (1, 1),
-                    };
+                        let (dx, dy) = direction(ship);
 
-                    let sign = match ship.vx.pow(2) + ship.vy.pow(2) {
-                    | 000..=064 => 1,
-                    | 065..=128 => 0,
-                    | _ => -1,
-                    };
+                        let sign = match ship.vx.pow(2) + ship.vy.pow(2) {
+                        | 000..=064 => 1,
+                        | 065..=128 => return None,
+                        | _ => -1,
+                        };
 
-                    Some(game::Command::Accelerate {
-                        id: ship.id,
-                        x: dx * sign,
-                        y: dy * sign,
+                        Some(game::Command::Accelerate {
+                            id: ship.id,
+                            x: dx * sign,
+                            y: dy * sign,
+                        })
                     })
-                })
-        );
-
-        if team == game::Role::Attack {
+            );
+        }
+        | game::Role::Attack => {
             for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
-
-                if ally.temp > (ally.max_temp / 2 - ally.stats.damage) {
-                    continue;
-                }
 
                 let mut min_dist = i64::MAX;
                 let mut min_ship = None;
@@ -102,17 +95,50 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 if let Some(enemy) = min_ship {
-                    commands.push(game::Command::Shoot {
-                        id: enemy.id,
-                        x: enemy.x + enemy.vx,
-                        y: enemy.y + enemy.vy,
-                    });
+                    if ally.temp <= ally.max_temp / 2 {
+
+                        let (dx, dy) = direction(&ally);
+                        let ally_speed = ally.vx.pow(2) + ally.vy.pow(2);
+                        let enemy_speed = enemy.vx.pow(2) + enemy.vy.pow(2);
+
+                        let sign = match ally_speed {
+                        | i64::MIN..=048 => 1,
+                        | 049..=127 if ally_speed < enemy_speed.saturating_sub(16) => 1,
+                        | 049..=127 if ally_speed > enemy_speed.saturating_add(16) => -1,
+                        | 049..=127 => 0,
+                        | 128..=i64::MAX => -1,
+                        };
+
+                        commands.push(game::Command::Accelerate {
+                            id: ally.id,
+                            x: dx * sign,
+                            y: dy * sign,
+                        });
+                    }
+
+                    if ally.temp <= (ally.max_temp - ally.stats.damage) {
+                        commands.push(game::Command::Shoot {
+                            id: enemy.id,
+                            x: enemy.x + enemy.vx,
+                            y: enemy.y + enemy.vy,
+                        });
+                    }
                 }
             }
+        }
         }
 
         current = client.commands(&mut atoms, &commands)?;
     }
 
     Ok(())
+}
+
+fn direction(ship: &game::Ship) -> (i64, i64) {
+    match (ship.x >= 0, ship.y >= 0) {
+    | (true, true) => (-1, 1),
+    | (false, true) => (-1, -1),
+    | (false, false) => (1, -1),
+    | (true, false) => (1, 1),
+    }
 }
