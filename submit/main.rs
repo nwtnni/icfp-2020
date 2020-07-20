@@ -30,10 +30,7 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("Initial State: {:#?}", initial);
 
-    let stats = match initial.info.role {
-    | game::Role::Attack => game::Stats { fuel: 128, damage: 64, coolant: 8, spawns: 1, },
-    | game::Role::Defend => game::Stats { fuel: 128, damage: 0, coolant: 16, spawns: 96, },
-    };
+    let stats = game::Stats { fuel: 128, damage: 0, coolant: 16, spawns: 96 };
 
     let mut current = client.start(&mut atoms, &stats)?;
     let mut commands = Vec::new();
@@ -51,89 +48,37 @@ fn main() -> anyhow::Result<()> {
 
         commands.clear();
 
-        match team {
-        | game::Role::Defend => {
-            for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
+        for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
 
-                // Skip dummy ships with no fuel
-                if ally.stats.fuel == 0 {
-                    continue;
-                }
-
-                let speed = ally.vx.pow(2) + ally.vy.pow(2);
-
-                if ally.stats.fuel > 64 && speed > 64 {
-                    commands.push(game::Command::Split(game::Stats {
-                        fuel: 0,
-                        damage: 0,
-                        coolant: 0,
-                        spawns: 1,
-                    }))
-                } else if ally.temp <= ally.max_temp / 2 {
-                    let (dx, dy) = direction(ally);
-
-                    let sign = match speed {
-                    | 000..=064 => 1,
-                    | 065..=128 => 0,
-                    | _ => -1,
-                    };
-
-                    commands.push(game::Command::Accelerate {
-                        id: ally.id,
-                        x: tweak(dx * sign, &mut rng),
-                        y: tweak(dy * sign, &mut rng),
-                    })
-                }
+            // Skip dummy ships with no fuel
+            if ally.stats.fuel == 0 {
+                continue;
             }
-        }
-        | game::Role::Attack => {
-            for (ally, _) in state.ships.iter().filter(|(ship, _)| ship.role == team) {
 
-                let mut min_dist = i64::MAX;
-                let mut min_ship = None;
+            let speed = ally.vx.pow(2) + ally.vy.pow(2);
 
-                for (enemy, _) in state.ships.iter().filter(|(ship, _)| ship.role != team) {
-                    let dist = ((ally.x + ally.vx) - (enemy.x + enemy.vx)).pow(2) +
-                        ((ally.y + ally.vy) - (enemy.y + enemy.vy)).pow(2);
+            if ally.stats.fuel > 64 && speed > 64 {
+                commands.push(game::Command::Split(game::Stats {
+                    fuel: 0,
+                    damage: 0,
+                    coolant: 0,
+                    spawns: 1,
+                }))
+            } else if ally.temp <= ally.max_temp / 2 {
+                let (dx, dy) = direction(ally);
 
-                    if dist < min_dist {
-                        min_dist = dist;
-                        min_ship = Some(*enemy);
-                    }
-                }
+                let sign = match speed {
+                | 000..=064 => 1,
+                | 065..=128 => 0,
+                | _ => -1,
+                };
 
-                if let Some(enemy) = min_ship {
-                    if ally.temp <= ally.max_temp / 2 {
-
-                        let (dx, dy) = direction(&ally);
-                        let ally_speed = ally.vx.pow(2) + ally.vy.pow(2);
-                        let enemy_speed = enemy.vx.pow(2) + enemy.vy.pow(2);
-
-                        let sign = match ally_speed {
-                        | i64::MIN..=048 => 1,
-                        | 049..=127 if ally_speed < enemy_speed.saturating_sub(16) => 1,
-                        | 049..=127 if ally_speed > enemy_speed.saturating_add(16) => -1,
-                        | 049..=127 => 0,
-                        | 128..=i64::MAX => -1,
-                        };
-
-                        commands.push(game::Command::Accelerate {
-                            id: ally.id,
-                            x: dx * sign,
-                            y: dy * sign,
-                        });
-                    }
-
-                    if ally.temp <= (ally.max_temp - ally.stats.damage) {
-                        commands.push(game::Command::Shoot {
-                            id: enemy.id,
-                            x: enemy.x + enemy.vx,
-                            y: enemy.y + enemy.vy,
-                        });
-                    }
-                }
+                commands.push(game::Command::Accelerate {
+                    id: ally.id,
+                    x: tweak(dx * sign, &mut rng),
+                    y: tweak(dy * sign, &mut rng),
+                })
             }
-        }
         }
 
         current = client.commands(&mut atoms, &commands)?;
