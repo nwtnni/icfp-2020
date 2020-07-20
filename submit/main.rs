@@ -1,5 +1,7 @@
 use std::env;
 
+use rand::Rng as _;
+
 use icfp::game;
 
 // TODO: wipe from Git history before publicizing repo
@@ -29,10 +31,10 @@ fn main() -> anyhow::Result<()> {
     client.join(&mut atoms)?;
 
     let stats = game::Stats {
-        fuel: 192,
+        fuel: 256,
         damage: 0,
         coolant: 8,
-        spawns: 64,
+        spawns: 32,
     };
 
     let mut current = client.start(&mut atoms, &stats)?;
@@ -60,11 +62,11 @@ fn main() -> anyhow::Result<()> {
 
             let speed = ally.vx.pow(2) + ally.vy.pow(2);
 
-            if ally.stats.fuel > 64 && speed > 64 {
+            if ally.stats.fuel > 64 && speed > 100 {
                 commands.push(game::Command::Split {
                     id: ally.id,
                     stats: game::Stats {
-                        fuel: 0,
+                        fuel: 6,
                         damage: 0,
                         coolant: 0,
                         spawns: 1,
@@ -74,15 +76,16 @@ fn main() -> anyhow::Result<()> {
                 let (dx, dy) = direction(ally);
 
                 let sign = match speed {
-                | 000..=064 => 1,
-                | 065..=128 => 0,
+                | 000..=081 if rng.gen_ratio(1, 8) => 2,
+                | 000..=081 => 1,
+                | 082..=128 => continue,
                 | _ => -1,
                 };
 
                 commands.push(game::Command::Accelerate {
                     id: ally.id,
-                    x: tweak(dx * sign, &mut rng),
-                    y: tweak(dy * sign, &mut rng),
+                    x: dx * sign,
+                    y: dy * sign,
                 })
             }
         }
@@ -99,20 +102,5 @@ fn direction(ship: &game::Ship) -> (i64, i64) {
     | (false, true) => (-1, -1),
     | (false, false) => (1, -1),
     | (true, false) => (1, 1),
-    }
-}
-
-fn tweak<R: rand::Rng>(x: i64, rng: &mut R) -> i64 {
-    if rng.gen_ratio(1, 8) {
-        match (x, rng.gen()) {
-        | (0, true) => 1,
-        | (0, false) => -1,
-        | (1, true) => 0,
-        | (1, false) => -1,
-        | (_, true) => 1,
-        | (_, false) => 0,
-        }
-    } else {
-        x
     }
 }
