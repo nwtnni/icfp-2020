@@ -58,12 +58,15 @@ fn main() -> anyhow::Result<()> {
             let speed = ally.vx.pow(2) + ally.vy.pow(2);
 
             if ally.stats.fuel > 64 && speed > 64 {
-                commands.push(game::Command::Split(game::Stats {
-                    fuel: 0,
-                    damage: 0,
-                    coolant: 0,
-                    spawns: 1,
-                }))
+                commands.push(game::Command::Split {
+                    id: ally.id,
+                    stats: game::Stats {
+                        fuel: 0,
+                        damage: 0,
+                        coolant: 0,
+                        spawns: 1,
+                    },
+                })
             } else if ally.temp <= ally.max_temp / 2 {
                 let (dx, dy) = direction(ally);
 

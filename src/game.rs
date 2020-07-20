@@ -186,7 +186,10 @@ pub enum Command {
         x: i64,
         y: i64,
     },
-    Split(Stats),
+    Split {
+        id: i64,
+        stats: Stats,
+    },
 }
 
 impl Command {
@@ -195,7 +198,7 @@ impl Command {
         | Command::Accelerate { id: _, x, y } => Command::Accelerate { id, x, y },
         | Command::Detonate { .. } => Command::Detonate { id },
         | Command::Shoot { id: _, x, y } => Command::Shoot { id, x, y },
-        | Command::Split(stats) => Command::Split(stats),
+        | Command::Split { id: _, stats } => Command::Split { id, stats },
         }
     }
 }
@@ -230,7 +233,7 @@ impl From<&Exp> for Option<Command> {
         | 3 => {
             let (stats, _) = tail.to_cons();
             let stats = Stats::from(&**stats);
-            Some(Command::Split(stats))
+            Some(Command::Split { id, stats })
         }
         | _ => None,
         }
@@ -261,9 +264,10 @@ impl From<Command> for Exp {
                 Exp::Atom(Atom::Nil),
             )
         }
-        | Command::Split(stats) => {
+        | Command::Split { id, stats } => {
             list!(
                 Exp::from(3),
+                Exp::from(id),
                 Exp::from(stats),
             )
         }
