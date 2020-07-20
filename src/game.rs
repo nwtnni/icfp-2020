@@ -90,7 +90,7 @@ impl From<&Exp> for State {
             let (mut command_exps, _) = rest.to_cons();
 
             while let Some((command_exp, tail)) = command_exps.to_cons_opt() {
-                let command = Command::from(&**command_exp);
+                let command = Command::from(&**command_exp).with_id(ship.id);
                 commands.push(command);
                 command_exps = tail;
             }
@@ -120,6 +120,16 @@ pub enum Command {
     }
 }
 
+impl Command {
+    fn with_id(self, id: i64) -> Self {
+        match self {
+        | Command::Accelerate { id: _, x, y } => Command::Accelerate { id, x, y },
+        | Command::Detonate { .. } => Command::Detonate { id },
+        | Command::Shoot { id: _, x, y } => Command::Shoot { id, x, y },
+        }
+    }
+}
+
 impl From<&Exp> for Command {
     fn from(exp: &Exp) -> Self {
 
@@ -128,8 +138,8 @@ impl From<&Exp> for Command {
         let (r#type, tail) = exp.to_cons();
         let r#type = r#type.to_int();
 
-        let (id, tail) = tail.to_cons();
-        let id = id.to_int();
+        // Dummy ID when parsing from a response
+        let id = 0;
 
         match r#type {
         | 0 => {
