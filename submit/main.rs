@@ -31,14 +31,15 @@ fn main() -> anyhow::Result<()> {
     client.join(&mut atoms)?;
 
     let stats = game::Stats {
-        fuel: 256,
-        damage: 0,
-        coolant: 8,
-        spawns: 32,
+        fuel: 128,
+        damage: 64,
+        coolant: 4,
+        spawns: 4,
     };
 
     let mut current = client.start(&mut atoms, &stats)?;
     let mut commands = Vec::new();
+    let mut spawned = 0;
     let mut rng = rand::thread_rng();
 
     let team = current.info.role;
@@ -62,23 +63,30 @@ fn main() -> anyhow::Result<()> {
 
             let speed = ally.vx.pow(2) + ally.vy.pow(2);
 
-            if ally.stats.fuel > 64 && speed > 100 {
+            if ally.stats.fuel > 64
+            && ally.stats.spawns > 1
+            && speed > 100
+            && state.tick - spawned > 16 {
                 commands.push(game::Command::Split {
                     id: ally.id,
                     stats: game::Stats {
-                        fuel: 6,
+                        fuel: 8,
                         damage: 0,
                         coolant: 0,
                         spawns: 1,
                     },
-                })
-            } else if ally.temp <= ally.max_temp / 2 {
+                });
+                spawned = state.tick;
+                continue;
+            }
+
+            if ally.temp <= ally.max_temp / 2 {
                 let (dx, dy) = direction(ally);
 
                 let sign = match speed {
-                | 000..=049 if rng.gen_ratio(1, 8) => 2,
-                | 000..=049 => 1,
-                | 050..=100 => continue,
+                | 000..=064 if rng.gen_ratio(1, 8) => 2,
+                | 000..=064 => 1,
+                | 065..=144 => continue,
                 | _ => -1,
                 };
 
@@ -87,6 +95,37 @@ fn main() -> anyhow::Result<()> {
                     x: dx * sign,
                     y: dy * sign,
                 })
+            }
+
+            if ally.temp > ally.max_temp / 2
+            || ally.stats.damage == 0 {
+                continue;
+            }
+
+            let mut min_dist = i64::MAX;
+            let mut min_ship = None;
+
+            for (enemy, _) in state.ships.iter().filter(|(ship, _)| ship.role != team) {
+                let dist = ((ally.x + ally.vx) - (enemy.x + enemy.vx)).pow(2) +
+                    ((ally.y + ally.vy) - (enemy.y + enemy.vy)).pow(2);
+
+                if dist < min_dist {
+                    min_dist = dist;
+                    min_ship = Some(enemy);
+                }
+            }
+
+            // Same quadrant
+            if let Some(enemy) = min_ship {
+                if (enemy.x + enemy.vx >= 0) == (ally.x + ally.vx >= 0)
+                && (enemy.y + enemy.vy >= 0) == (ally.y + ally.vy >= 0) {
+                    commands.push(game::Command::Shoot {
+                        id: ally.id,
+                        x: enemy.x + enemy.vx,
+                        y: enemy.y + enemy.vy,
+                        power: ally.stats.damage,
+                    });
+                }
             }
         }
 
