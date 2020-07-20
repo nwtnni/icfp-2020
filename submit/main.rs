@@ -67,10 +67,16 @@ fn main() -> anyhow::Result<()> {
                     | (true, false) => (1, 1),
                     };
 
+                    let sign = match ship.vx.pow(2) + ship.vy.pow(2) {
+                    | 000..=064 => 1,
+                    | 065..=128 => 0,
+                    | _ => -1,
+                    };
+
                     Some(game::Command::Accelerate {
                         id: ship.id,
-                        x: dx,
-                        y: dy,
+                        x: dx * sign,
+                        y: dy * sign,
                     })
                 })
         );
