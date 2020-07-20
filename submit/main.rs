@@ -76,9 +76,9 @@ fn main() -> anyhow::Result<()> {
                 let (dx, dy) = direction(ally);
 
                 let sign = match speed {
-                | 000..=081 if rng.gen_ratio(1, 8) => 2,
-                | 000..=081 => 1,
-                | 082..=128 => continue,
+                | 000..=049 if rng.gen_ratio(1, 8) => 2,
+                | 000..=049 => 1,
+                | 050..=100 => continue,
                 | _ => -1,
                 };
 
