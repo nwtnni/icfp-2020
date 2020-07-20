@@ -153,8 +153,9 @@ impl From<&Exp> for State {
             let (mut command_exps, _) = rest.to_cons();
 
             while let Some((command_exp, tail)) = command_exps.to_cons_opt() {
-                let command = Command::from(&**command_exp).with_id(ship.id);
-                commands.push(command);
+                <Option<Command>>::from(&**command_exp)
+                    .map(|command| command.with_id(ship.id))
+                    .map(|command| commands.push(command));
                 command_exps = tail;
             }
             
@@ -180,7 +181,8 @@ pub enum Command {
         id: i64,
         x: i64,
         y: i64,
-    }
+    },
+    Split(Stats),
 }
 
 impl Command {
@@ -189,11 +191,12 @@ impl Command {
         | Command::Accelerate { id: _, x, y } => Command::Accelerate { id, x, y },
         | Command::Detonate { .. } => Command::Detonate { id },
         | Command::Shoot { id: _, x, y } => Command::Shoot { id, x, y },
+        | Command::Split(stats) => Command::Split(stats),
         }
     }
 }
 
-impl From<&Exp> for Command {
+impl From<&Exp> for Option<Command> {
     fn from(exp: &Exp) -> Self {
 
         log::debug!("Parsing command: {}", exp);
@@ -210,17 +213,22 @@ impl From<&Exp> for Command {
             let (x, y) = vec.to_cons();
             let x = x.to_int();
             let y = y.to_int();
-            Command::Accelerate { id, x, y }
+            Some(Command::Accelerate { id, x, y })
         }
-        | 1 =>  Command::Detonate { id },
+        | 1 =>  Some(Command::Detonate { id }),
         | 2 => {
             let (target, _) = tail.to_cons();
             let (x, y) = target.to_cons();
             let x = x.to_int();
             let y = y.to_int();
-            Command::Shoot { id, x, y }
+            Some(Command::Shoot { id, x, y })
         }
-        | other => panic!(format!("Expected 0, 1, or 2 for command type, but found: {}", other)),
+        | 3 => {
+            let (stats, _) = tail.to_cons();
+            let stats = Stats::from(&**stats);
+            Some(Command::Split(stats))
+        }
+        | _ => None,
         }
     }
 }
@@ -247,6 +255,12 @@ impl From<Command> for Exp {
                 Exp::from(id),
                 pair!(Exp::from(x), Exp::from(y)),
                 Exp::Atom(Atom::Var(3)),
+            )
+        }
+        | Command::Split(stats) => {
+            list!(
+                Exp::from(3),
+                Exp::from(stats),
             )
         }
         };
