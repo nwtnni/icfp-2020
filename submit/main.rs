@@ -31,10 +31,10 @@ fn main() -> anyhow::Result<()> {
     client.join(&mut atoms)?;
 
     let stats = game::Stats {
-        fuel: 128,
+        fuel: 192,
         damage: 64,
         coolant: 4,
-        spawns: 4,
+        spawns: 8,
     };
 
     let mut current = client.start(&mut atoms, &stats)?;
