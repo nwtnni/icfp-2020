@@ -53,10 +53,19 @@ fn main() -> anyhow::Result<()> {
             .ships
             .iter()
             .filter(|(ship, _)| ship.role == team)
-            .map(|(ship, _)| game::Command::Accelerate {
-                id: ship.id,
-                x: ship.vx,
-                y: ship.vy,
+            .map(|(ship, _)| {
+                let (dx, dy) = match (ship.x >= 0, ship.y >= 0) {
+                | (true, true) => (-1, 1),
+                | (false, true) => (-1, -1),
+                | (false, false) => (1, -1),
+                | (true, false) => (1, 1),
+                };
+
+                game::Command::Accelerate {
+                    id: ship.id,
+                    x: dx,
+                    y: dy,
+                }
             })
             .collect::<Vec<_>>();
 
