@@ -113,7 +113,9 @@ impl From<&Exp> for Info {
         // (16, 128) ?
         let (_, tail) = tail.to_cons();
 
-        let enemy = tail
+        let (enemy, _) = tail.to_cons();
+
+        let enemy = enemy
             .to_cons_opt()
             .map(|(enemy, _)| Stats::from(&**enemy));
 
@@ -277,6 +279,9 @@ pub struct Ship {
     pub y: i64,
     pub vx: i64,
     pub vy: i64,
+    pub stats: Stats,
+    pub temp: i64,
+    pub max_temp: i64,
 }
 
 impl From<&Exp> for Ship {
@@ -295,11 +300,19 @@ impl From<&Exp> for Ship {
         let x = x.to_int();
         let y = y.to_int();
 
-        // Discard remaining x4, x5, x6, x7 list elements
-        let (vel, _) = tail.to_cons();
+        let (vel, tail) = tail.to_cons();
         let (vx, vy) = vel.to_cons();
         let vx = vx.to_int();
         let vy = vy.to_int();
+
+        let (stats, tail) = tail.to_cons();
+        let stats = Stats::from(&**stats);
+
+        let (temp, tail) = tail.to_cons();
+        let temp = temp.to_int();
+
+        let (max_temp, _) = tail.to_cons();
+        let max_temp = max_temp.to_int();
 
         Ship {
             role,
@@ -308,6 +321,9 @@ impl From<&Exp> for Ship {
             y,
             vx,
             vy,
+            stats,
+            temp,
+            max_temp,
         }
     }
 }
